@@ -1,0 +1,44 @@
+@font-face {
+    font-family: 'Mercedes-Benz font';
+    src: url('../font/Mercedes-Benz\ Font.ttf');
+}
+
+@font-face {
+    font-family: 'Mercedes-Benz font bold';
+    src: url('../font/Mercedes-Benz\ Font\ -\ Bold.otf');
+}
+
+@font-face {
+    font-family: 'Mercedes-Benz font not fancy';
+    src: url('../font/Co\ Text\ Corp\ Light.ttf');
+}
+
+* {
+    /* Fonts */
+    font-family: 'Mercedes-Benz font', sans-serif;
+    font-weight: 300;
+    color-scheme: dark;
+}
+
+body {
+    /* Height adjustments */
+    height: 100svh;
+    width: 100svw;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    padding-left: 2px;
+    padding-right: 2px;
+
+    /* Display */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* Background Colors */
+    background-color: rgb(26, 29, 32);
+}
+
+p {
+    font-family: 'Mercedes-Benz font not fancy';
+}

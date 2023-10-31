@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "ES6",
+        "outDir": "./js",
+        "rootDir": "./ts",
+        "strict": true,
+        "module": "ESNext",
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true
+    },
+    "include": [
+        "./ts/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

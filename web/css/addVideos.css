@@ -1,0 +1,9 @@
+.submit-parent {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.addVideoFormStyles {
+    margin-top: 10px;
+}

@@ -1,0 +1,1 @@
+Start-Process powershell -ArgumentList "-NoExit", ".\start.ps1"

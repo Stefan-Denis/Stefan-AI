@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/bootstrap.css">
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/style.css" id="main-stylesheet">
+    <link rel="stylesheet" href="css/loading.css">
+    <link rel="stylesheet" href="css/notification.css">
+    <link rel="stylesheet" href="css/addVideos.css">
+    <link rel="stylesheet" href="css/removeVideo.css">
+    <script src="js/main.js" defer type="module"></script>
+    <script src="js/bootstrap.bundle.js" defer></script>
+    <link rel="shortcut icon" href="logo-circle.png" type="image/x-icon">
+    <title>Stefan AI</title>
+</head>
+
+<body>
+    <nav class="container-margins custom-shadow">
+        <div class="nav-logo-element">
+            <div class="inner-nav-logo-div">
+                <img src="logo-circle.png" alt="" class="logo" width="150" height="150">
+            </div>
+        </div>
+        <br>
+        <hr>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-outline-success custom-font" id="start" onclick="">Start
+                Production</button>
+        </div>
+        <hr>
+        <div class="nav-quick-menu-div">
+            <div>
+                <div class="dropdown">
+                    <button class="btn btn-dark dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                        aria-expanded="false" data-bs-theme="dark" id="">
+                        Jump To . . .
+                    </button>
+                    <ul class="dropdown-menu" data-bs-theme="dark">
+                        <li><a class="dropdown-item" href="#prompt-management-div">Prompt Management</a></li>
+                        <li><a class="dropdown-item" href="#api-management-div">API Management</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <br>
+        <hr>
+        <h5 class="section-title">Script Settings</h5>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="setVideoUsageLimit-Button">Set Video Usage Limit
+                in script</button>
+        </div>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font">Change Current Prompt</button>
+        </div>
+        <br>
+        <hr>
+        <h5 class="section-title">Video Management</h5>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="addVideo-Button">Add Videos</button>
+        </div>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="removeVideos-Button">Manage Videos</button>
+        </div>
+        <br>
+        <hr>
+        <h5 class="section-title">Theme Management</h5>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="viewThemes-Button">View Themes</button>
+        </div>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="editThemes-Button">Edit Themes</button>
+        </div>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="resetThemes-Button">Reset Themes</button>
+        </div>
+        <br>
+        <hr>
+        <div id="prompt-management-div"></div>
+        <h5 class="section-title">Profile Management</h5>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="addProfile-button">Add Profile</button>
+        </div>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="deleteProfiles-button">Delete Profiles</button>
+        </div>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="selectedProfile-button">Select a Profile</button>
+        </div>
+        <br>
+        <hr>
+        <div id="api-management-div"></div>
+        <h5 class="section-title">API Management</h5>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="addGPTKey-Button">Add GPT Key</button>
+        </div>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font" id="addGoogleJSONFile-Button">Add Google JSON
+                file</button>
+        </div>
+        <br>
+        <hr>
+        <h5 class="section-title">Other Functions</h5>
+        <div class="nav-button-element mt-3">
+            <button type="button" class="btn btn-dark custom-font">View All Settings</button>
+        </div>
+    </nav>
+    <main class="container-margins custom-shadow" id="main">
+        <div class="init-menu">
+            <div class="nav-logo-element">
+                <div class="inner-nav-logo-div">
+                    <img src="logo-circle.png" alt="" class="logo">
+                </div>
+            </div>
+            <h1>Stefan AI</h1>
+            <h4>World-Class Short-Form Video Maker</h4>
+            <h5>Powered By GPT - 4 <img src="img/openai.png" alt="" height="30" class="openai-logo">
+            </h5>
+            <p>Version 2.0</p>
+        </div>
+    </main>
+</body>
+
+</html>

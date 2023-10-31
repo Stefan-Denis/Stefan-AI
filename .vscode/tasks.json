@@ -1,0 +1,56 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile TypeScript (Web)",
+            "type": "shell",
+            "command": "tsc",
+            "args": [
+                "--watch",
+                "-p",
+                "web/tsconfig.json"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": "$tsc"
+        },
+        {
+            "label": "Compile TypeScript (Server)",
+            "type": "shell",
+            "command": "tsc",
+            "args": [
+                "--watch",
+                "-p",
+                "server/tsconfig.json"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": "$tsc"
+        },
+        {
+            "label": "Compile TypeScript (Prompt)",
+            "type": "shell",
+            "command": "echo",
+            "args": [
+                "Choose which TypeScript project to compile"
+            ],
+            "presentation": {
+                "reveal": "always"
+            }
+        },
+        {
+            "label": "Compile TypeScript (Both)",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Compile TypeScript (Prompt)",
+                "Compile TypeScript (Web)",
+                "Compile TypeScript (Server)"
+            ],
+            "presentation": {
+                "reveal": "always"
+            }
+        }
+    ]
+}

@@ -1,0 +1,131 @@
+.nav-logo-element {
+    width: 100%;
+    height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.inner-nav-logo-div {
+    height: 170px;
+    width: 170px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.inner-nav-logo-div>img {
+    width: 150px;
+    height: 150px;
+    border-radius: 100%;
+    transition: all 0.3s ease;
+}
+
+.inner-nav-logo-div>img:hover {
+    box-shadow: 0px 0px 2px 1px rgb(73, 80, 87);
+    cursor: pointer;
+}
+
+.logo {
+    width: 190px;
+    height: 190px;
+}
+
+:root {
+    --bg-color: rgb(26, 29, 32);
+    --button-heights: 60px
+}
+
+nav {
+    /* General Settings*/
+    background-color: var(--bg-color);
+    height: calc(100% - 20px);
+    border-radius: 12px 0px 0px 12px;
+    min-width: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+main {
+    /* General Settings*/
+    background-color: var(--bg-color);
+    height: calc(100% - 20px);
+    min-width: calc(100% - 230px);
+    margin-top: 5px;
+    margin-bottom: 5px;
+    display: block !important;
+    overflow-y: scroll;
+}
+
+.container-margins {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.custom-shadow {
+    box-shadow: 0px 0px 2px 1px rgb(73, 80, 87);
+}
+
+.nav-button-element {
+    width: 100%;
+    height: var(--button-heights);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.nav-button-element>button {
+    width: 86%;
+    height: var(--button-heights);
+}
+
+.custom-font {
+    font-family: 'Mercedes-Benz font bold';
+}
+
+.section-title {
+    text-align: center;
+    cursor: pointer;
+}
+
+.nav-quick-menu-div {
+    width: 100%;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-quick-menu-div>div {
+    transform: translateY(10px) translateX(-22px);
+}
+
+.custom-center-div {
+    height: auto;
+    width: 75%;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.init-menu {
+    text-align: center;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.loading-data-usageLimit {
+    width: 200px;
+}
+
+.openai-logo {
+    filter: invert(100%);
+    transform: translateY(-2px);
+}

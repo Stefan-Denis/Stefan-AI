@@ -1,0 +1,112 @@
+.notification {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    padding: 10px;
+    background-color: rgb(26, 29, 32);
+    border: 1px solid rgb(61, 67, 72);
+    color: #fff;
+    border-radius: 5px;
+    box-shadow: 0px 0px 14px 1px rgb(11, 11, 11);
+    font-size: 20px;
+    height: auto;
+    width: 300px;
+    animation: slide-in 0.5s ease-out forwards;
+}
+
+.notification>p {
+    margin: 0;
+}
+
+#notification-date {
+    font-size: 16px;
+    color: gray;
+}
+
+#notification-content {
+    margin-top: 4px;
+}
+
+@keyframes slide-in {
+    0% {
+        transform: translateX(110%);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.notification.pop-out-animation {
+    animation: slide-out 0.5s ease-out forwards;
+}
+
+@keyframes slide-out {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(110%);
+        opacity: 0;
+    }
+}
+
+.success-background-animation {
+    background-size: 400% 400%;
+    animation: success 2s ease 1;
+    animation-fill-mode: forwards;
+}
+
+@keyframes success {
+    0% {
+        background-color: rgb(26, 29, 32);
+        background-position: 100% 100%;
+    }
+
+    25% {
+        background-position: 100% 100%;
+        background-color: rgba(4, 0, 255, 0.45);
+    }
+
+    50% {
+        background-position: 100% 100%;
+        background-color: rgba(4, 0, 255, 0.25);
+    }
+
+    100% {
+        background-color: rgb(26, 29, 32);
+        background-position: 100% 100%;
+    }
+}
+
+.error-background-animation {
+    background-size: 400% 400%;
+    animation: error 2s ease 1;
+    animation-fill-mode: forwards;
+}
+
+@keyframes error {
+    0% {
+        background-color: rgb(26, 29, 32);
+        background-position: 100% 100%;
+    }
+
+    25% {
+        background-position: 100% 100%;
+        background-color: rgba(255, 0, 0, 0.45);
+    }
+
+    50% {
+        background-position: 100% 100%;
+        background-color: rgba(255, 0, 0, 0.25);
+    }
+
+    100% {
+        background-color: rgb(26, 29, 32);
+        background-position: 100% 100%;
+    }
+}

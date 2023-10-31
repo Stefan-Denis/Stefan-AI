@@ -1,0 +1,25 @@
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="text-center">Upload Video</h1>
+                </div>
+                <div class="card-body">
+                    <p>Must be 1080x1920 | 9:16 format</p>
+                    <p>MP4 Only</p>
+                    <form action="" method="post" enctype="multipart/form-data" id="addVideoForm">
+                        <div class="form-group addVideoFormStyles">
+                            <label for="video" id="labelToBeRemoved-addVideo">Add videos</label>
+                            <input type="file" class="form-control-file" id="video" name="video[]" accept=".mp4"
+                                multiple required>
+                        </div>
+                        <div class="submit-parent">
+                            <button type="submit" class="btn btn-primary float-right">Upload</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

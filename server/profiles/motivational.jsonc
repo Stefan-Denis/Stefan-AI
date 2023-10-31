@@ -1,0 +1,108 @@
+{
+    // Profile Name
+    "profile": "motivational",
+
+    // Prompt to give to AI
+    "prompt": "",
+
+    // Processing Settings
+    "settings": {
+        "easy": {
+
+            // Create a cool loop from end to start
+            "loop": true,
+
+            // Shuffle order of combinations (so content does not look reused)
+            "shuffle": true,
+
+            // How many times a video can be used
+            "maxVideoUsage": 2,
+
+            // How many clips can appear max
+            "videosPerCombination": 4,
+
+            // App can auto-determine the amount of videos to use per clip for that combination
+            "dynamicVideoEditing": true,
+
+            // Length settings in seconds
+            "length": {
+                "min": 9,
+                "max": 18,
+                "preferred": 15
+            }
+        },
+
+        // Custom, specific settings
+        "advanced": {
+            // Words to appear at once on the screen
+            "maxWordsOnScreen": 2,
+
+            /*
+             ** Specify if the app should have a desired output
+             ** leave empty for automatic output 
+             */
+            "desiredOutput": "",
+
+            // Set transition settings
+            "transitions": {
+                // Use custom, modern transitions
+                "enabled": true,
+
+                /*
+                 ** Define a list of predefined transitions to use
+                 ** leave empty for automatic transition selection
+                 */
+                "selectedTransitions": []
+            },
+
+            /*
+             **  Define a general theme that the app should use for the video
+             **  Leave empty for automatic creation
+             */
+            "generalTheme": "stories",
+
+            // VIDEO SETTINGS
+            "upscale": true, // Use the unsharp filter
+            "colorful": true, // Make the colors better
+            "contrast": 1.3
+        },
+
+        /*
+         ** Allow images to appear above videos
+         ** This can be used to add a logo or watermark
+         ** Disable for no overlays
+         ** Used to insert images into the video
+         */
+        "overlays": {
+            // Enable overlays
+            "enabled": true,
+
+            // Apply a watermark to the video
+            "watermark": {
+                "enabled": true,
+                "text": "channel.name"
+            },
+
+            // Apply images
+            "imageApplication": {
+                // Enable image overlays
+                "enabled": true,
+
+                /* 
+                 ** Insert images into the video, using this template
+                 ** ex:
+                */
+
+                "#": {
+                    "name": "story1.png", // mandatory, specify the file name
+                    "interval": "00:00 - auto", // interval in which the video can be placed.
+                    /*
+                     ** Text for AI to read
+                     ** set as `null` with no semicolons, just plain text for no tts 
+                     */
+                    "text": "Reddit, what was a time you had a lot of fun?"
+                }
+            }
+        }
+    }
+}
