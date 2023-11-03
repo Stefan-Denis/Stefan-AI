@@ -1,6 +1,11 @@
 {
     // Profile Name
     "profile": "motivational",
+    // Prompt to give to AI
+    "PromptRules": {
+        "enabled": true,
+        "rules": []
+    },
     // Processing Settings
     "settings": {
         "easy": {
@@ -8,12 +13,14 @@
             "loop": true,
             // Shuffle order of combinations (so content does not look reused)
             "shuffle": true,
-            // How many times a video can be used
+            // How many times a video can be used in the whole process
+            // This should not be bigger than the amount of videos the app has been given
             "maxVideoUsage": 2,
-            // How many clips can appear max
-            "videosPerCombination": 4,
+            // How many clips can appear max in an array of videos
+            "videosPerCombination": 2,
             // App can auto-determine the amount of videos to use per clip for that combination
-            "dynamicVideoEditing": true,
+            // This should not be bigger than the amount of videos the app has been given
+            "dynamicVideoSelection": true,
             // Length settings in seconds
             "length": {
                 "min": 9,
@@ -44,7 +51,7 @@
              **  Define a general theme that the app should use for the video
              **  Leave empty for automatic creation
              */
-            "generalTheme": "stories",
+            "generalTheme": "Motivational Clips",
             // VIDEO SETTINGS
             "upscale": true, // Use the unsharp filter
             "colorful": true, // Make the colors better

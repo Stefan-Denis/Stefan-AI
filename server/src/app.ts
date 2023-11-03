@@ -13,6 +13,7 @@ import getUsageLimit from './getUsageLimit.js'
 import setUsageLimit from './setUsageLimit.js'
 import checkVideoDimensions from './checkVideoDimensions.js'
 import { themeFile } from './themeFileManager.js'
+import calculateAllCombinations from './estimate.js'
 
 // __dirname
 const currentModuleUrl = new URL(import.meta.url)
@@ -206,6 +207,19 @@ app.post('/profiles/equip', (req, res) => {
     fs.writeFileSync(path.join(__dirname, '../', 'profiles', 'main.txt'), req.body.profileName)
     res.sendStatus(200)
 })
+
+// ^ Calculate Videos
+app.post('/calculate-videos', (req, res) => {
+    const maxVideoUsageInput = parseInt(req.body.maxVideoUsageInput)
+    const videosPerArrayInput = parseInt(req.body.videosPerArrayInput)
+
+    // Files data
+    const videoPath = path.join(__dirname, '../', 'videos')
+    const files: Array<string> = fs.readdirSync(videoPath).filter(file => path.extname(file) === '.mp4')
+
+    res.status(200).send({ maxCombinations: calculateAllCombinations(maxVideoUsageInput, videosPerArrayInput, files.length) as number })
+})
+
 
 //! MAIN PRODUCTION
 app.get('/start', (req, res) => {

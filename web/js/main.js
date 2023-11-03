@@ -33,6 +33,9 @@ deleteProfiles();
 // Import Select Profile Script
 import selectProfile from "./selectProfiles.js";
 selectProfile();
+// Import calculateVideos Script
+import calculateVideos from "./calculateVideos.js";
+calculateVideos();
 // Begin Production
 import main from "./beginProduction.js";
 main();

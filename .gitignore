@@ -1,1 +1,3 @@
-server/node_modules
+server/videos/
+server/src/main.ts
+server/dist/main.js
