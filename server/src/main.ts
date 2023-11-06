@@ -23,17 +23,9 @@ interface VideoAutomationSettings extends Object {
     /**
      * The prompt rules that will be given to the AI.
      */
-    promptRules: {
-        /**
-         * Choose to enable prompt rules
-         */
-        enabled: boolean
+    promptRules: [
 
-        /**
-         * Prompt rules for the AI to follow.
-         */
-        rules: Array<string>
-    }
+    ]
 
     /**
      * The settings for the profile.
@@ -284,8 +276,6 @@ if (!crashStatus) {
             if (combination.length === videosPerCombination) {
                 combinations.push(combination)
             }
-
-            console.log(matrix)
         }
 
         /**
@@ -295,6 +285,14 @@ if (!crashStatus) {
         combinations.forEach(combination => {
             combination.push(false)
         })
+
+        // Shuffle the cominations if app.settings.easy.shuffle === true
+        if (app.settings.easy.shuffle) {
+            for (let i = combinations.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [combinations[i], combinations[j]] = [combinations[j], combinations[i]]
+            }
+        }
 
         return combinations
     }
@@ -319,21 +317,32 @@ const combinations: combination = JSON.parse(fs.readFileSync(combinationsFilePat
 /**
  * Interface representing a system and user prompt.
  */
-interface prompts {
+interface prompts extends Object {
     system: string
     user: string
 }
 
+const test: boolean = true
+
+test ? console.log('Test mode is enabled') : null
+
 const output = path.join(__dirname, '../', '../', 'output')
-for (let x = 0; x < combinations.length; x++) {
+for (let x = 0; x < (test ? 1 : combinations.length); x++) {
+    const currentCombination = combinations[x]
     await (async () => {
-        // Construct prompts
+        /**
+         * The prompts for the AI.
+         */
         const prompts: prompts = {
             system: await constructPrompt('system'),
-            user: await constructPrompt('user')
+            user: await constructPrompt('user', currentCombination)
         }
 
-
+        console.log('System prompt:')
+        console.log(prompts.system)
+        console.log('\n')
+        console.log('User prompt:')
+        console.log(prompts.user)
     })()
 }
 
@@ -341,38 +350,106 @@ for (let x = 0; x < combinations.length; x++) {
  * @param It can recieve `system` or `user` as a string.
  * @returns The Prompt
  */
-async function constructPrompt(type: string): Promise<string> {
+async function constructPrompt(type: string, currentCombination?: subCombination): Promise<string> {
     let prompt = ''
 
     if (type === 'system') {
-        prompt +=
+        prompt =
             `You are great at doing many things, but your output is bad, here is how to format the output in .json format:
 
-        {
-            "video1": {
-                "isUsed": true or false,
-                "subtitle": "Insert clip subtitle here"
-            },
-            "video2": {
-                "isUsed": true or false,
-                "subtitle": "Insert clip subtitle here"
-            },
-            "video3": {
-                "isUsed": true or false,
-                "subtitle": "Insert clip subtitle here"
-            }
-        }
+{
+    "video1": {
+        "isUsed": true or false depending if you want to use it,
+        "subtitle": "Insert clip subtitle here"
+    },
+    "video2": {
+        "isUsed": true or false depending if you want to use it,
+        "subtitle": "Insert clip subtitle here"
+    },
+    "video3": {
+        "isUsed": true or false depending if you want to use it,
+        "subtitle": "Insert clip subtitle here"
+    }
+}
 
-        Here are the optional settings that can be enabled by the user:
-        isUsed = used when the user sets the prompt setting 'dynamicVideoSelection' to true, it allows you to determine if a video shall be used. If you determine that the video shoudnt be used, then dont use it by setting for the video object the isUsed property to "false"
+Here are the optional settings that can be enabled by the user:
+isUsed = used when the user sets the prompt setting 'dynamicVideoSelection' to true, it allows you to determine if a video shall be used. If you determine that the video shoudnt be used, then dont use it by setting for the video object the isUsed property to "false"
+    more on the "isUsed" property:
+    - You must only be allowed to select 1 video to not be used if you determine that it shouldnt be used and if the user set it to true
 
-        Settings for generation:
-        dynamicVideoSelection: ${app.settings.easy.dynamicVideoSelection}
-        `
+Settings for generation:
+dynamicVideoSelection: ${app.settings.easy.dynamicVideoSelection}
+
+General Rules to follow for any kind of video:
+1. Do not ever say the word "embrace" 
+2. match the speakers word per minute with the times given in the user prompt
+3. Do not ever embrace or suggest to find courage in stuff. You often say stuff like "find courage in darkness" which sounds depressing.
+4. Do not ever say the word "embrace" 
+
+What matters most during production.
+Accord more importance to the general theme of the video than the individual video clips, 80% to the video theme and let the video clips influence you just a bit so that the message isn't not-matching to the content `
     }
 
     else if (type === 'user') {
+        if (!currentCombination) {
+            console.error('currentCombination is undefined for user prompt')
+            process.exit(1)
+        }
 
+        // Determine video Themes
+        const videoThemesPath = path.join(__dirname, '../', 'config', 'theme.json')
+        const videoThemes = JSON.parse(fs.readFileSync(videoThemesPath, 'utf-8'))
+
+        const videoDirPath = path.join(__dirname, '../', 'videos')
+        const amountOfVideos = fs.readdirSync(videoDirPath).filter(file => path.extname(file) === '.mp4').length
+
+        const videoCombination: Record<string, { theme: string }> = {}
+
+        for (let i = 1; i <= app.settings.easy.videosPerCombination; i++) {
+            videoCombination[`video${i}`] = {
+                theme: "",
+            }
+        }
+
+        for (const key in videoCombination) {
+            for (let x = 0; x < amountOfVideos; x++) {
+                const video = currentCombination[parseInt(key.replace('video', '')) - 1] as string
+                if (video === videoThemes[x][0]) {
+                    videoCombination[key].theme = videoThemes[x][1]
+                }
+            }
+        }
+
+        let arrayOfThemes: Array<string> = []
+        for (const key in videoCombination) {
+            arrayOfThemes.push(videoCombination[key].theme)
+        }
+
+        console.log(arrayOfThemes)
+
+        prompt =
+            `I will need you to make a video script for the following videos:
+${arrayOfThemes.map((theme, index) => `${index + 1}. ${theme}`).join('\n')}
+
+The general theme the videos need to respect:
+${app.settings.advanced.generalTheme}
+    
+Information regarding how long you need to make the script in total:
+- minimum length: ${app.settings.easy.length.min} seconds
+- maximum length: ${app.settings.easy.length.max} seconds
+- preferred length: ${app.settings.easy.length.preferred} seconds
+- Current Voice Speaking Rate: 100 Words per Minute
+* Make sure to calculate how many words you can squeeze into each subtitle.
+Try to reach the limit
+
+Here are the rules you need to follow:
+${app.promptRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
+
+Desired output:
+"${app.settings.advanced.desiredOutput}"
+
+Respond back with just the subtitles in the JSON format in the system prompt and make sure to not use whitespace in JSON
+`
     }
 
     return prompt

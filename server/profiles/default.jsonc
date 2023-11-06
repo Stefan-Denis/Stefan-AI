@@ -2,10 +2,11 @@
     // Profile Name
     "profile": "motivational",
     // Prompt to give to AI
-    "PromptRules": {
-        "enabled": true,
-        "rules": []
-    },
+    "promptRules": [
+        "The content must not be washed up",
+        "Do not sell fake dreams",
+        "Do not say cheesy things"
+    ],
     // Processing Settings
     "settings": {
         "easy": {
@@ -17,13 +18,14 @@
             // This should not be bigger than the amount of videos the app has been given
             "maxVideoUsage": 2,
             // How many clips can appear max in an array of videos
-            "videosPerCombination": 2,
+            // Maximum of 6 clips.
+            "videosPerCombination": 3,
             // App can auto-determine the amount of videos to use per clip for that combination
             // This should not be bigger than the amount of videos the app has been given
             "dynamicVideoSelection": true,
             // Length settings in seconds
             "length": {
-                "min": 9,
+                "min": 7,
                 "max": 18,
                 "preferred": 15
             }
@@ -53,6 +55,7 @@
              */
             "generalTheme": "Motivational Clips",
             // VIDEO SETTINGS
+            // Not advised to change these settings, unless needed
             "upscale": true, // Use the unsharp filter
             "colorful": true, // Make the colors better
             "contrast": 1.3

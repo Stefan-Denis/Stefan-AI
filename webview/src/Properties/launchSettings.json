@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "webview (Package)": {
+      "commandName": "Project"
+    },
+    "webview (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

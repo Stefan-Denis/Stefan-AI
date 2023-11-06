@@ -10,11 +10,11 @@ Information regarding how long you need to make the script in total:
 minimum length: 9 seconds
 maximum length: 18 seconds
 preferred length: 15 seconds
-Current Voice Speaking Rate: 120 Words per minute - 150 Words per minute 
+Current Voice Speaking Rate: 100 Words per Minute
 
 Rules to Respect when creating the videos:
 The content must not be washed up
 Do not sell fake dreams
 Do not say cheesy things
 
-Respond back with just the subtitles seperated by a new line, nothing else
+Respond back with just the subtitles in the JSON format in the system prompt and make sure to not use whitespace in JSON

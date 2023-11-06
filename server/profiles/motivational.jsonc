@@ -3,12 +3,12 @@
     "profile": "motivational",
 
     // Prompt to give to AI
-    "PromptRules": {
-        "enabled": true,
-        "rules": [
-            
-        ]
-    },
+    "promptRules": [
+        "Do not give washed up subtitles, such as 'Reach the stars'",
+        "Avoid using the word 'embrace' in any form",
+        "Each subtitle added up must take the narrator TTS the amount of time specified in the length settings to read it out.",
+        "Aim for your subtitles in total to take up the whole video, or at least 80% of it."
+    ],
 
     // Processing Settings
     "settings": {
@@ -25,6 +25,7 @@
             "maxVideoUsage": 2,
 
             // How many clips can appear max in an array of videos
+            // Maximum of 6 clips.
             "videosPerCombination": 3,
 
             // App can auto-determine the amount of videos to use per clip for that combination
@@ -42,7 +43,7 @@
         // Custom, specific settings
         "advanced": {
             // Words to appear at once on the screen
-            "maxWordsOnScreen": 2,
+            "maxWordsOnScreen": 1,
 
             /*
              ** Specify if the app should have a desired output
@@ -69,6 +70,7 @@
             "generalTheme": "Motivational Clips",
 
             // VIDEO SETTINGS
+            // Not advised to change these settings, unless needed
             "upscale": true, // Use the unsharp filter
             "colorful": true, // Make the colors better
             "contrast": 1.3
