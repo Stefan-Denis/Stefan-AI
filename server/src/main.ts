@@ -4,12 +4,20 @@
 import * as commentJson from 'comment-json'
 import fs from 'fs-extra'
 import path from 'path'
+import OpenAI from 'openai'
+import ora, { Ora } from 'ora'
+import dotenv from 'dotenv'
+import { APIPromise } from 'openai/core'
+import { ChatCompletion } from 'openai/resources'
 
 /**
  * __DIRNAME VARIABLE
  */
 const currentModuleUrl = new URL(import.meta.url)
 export const __dirname = path.dirname(currentModuleUrl.pathname + '../').slice(1)
+
+// DotENV
+dotenv.config({ path: path.join(__dirname, '../', 'config', '.env') })
 
 /**
  * Represents the settings for a video automation profile.
@@ -301,7 +309,6 @@ if (!crashStatus) {
 
     try {
         fs.writeFileSync(combinationsFilePath, JSON.stringify(permutations, null, 4))
-        console.log(`Estimated Videos: ${permutations.length}`)
     } catch (error) {
         console.log(error)
         process
@@ -322,32 +329,66 @@ interface prompts extends Object {
     user: string
 }
 
-const test: boolean = true
+const test: boolean = true; test ? console.log('Test mode is enabled\n') : null
+let spinner: Ora
 
-test ? console.log('Test mode is enabled') : null
-
-const output = path.join(__dirname, '../', '../', 'output')
 for (let x = 0; x < (test ? 1 : combinations.length); x++) {
     const currentCombination = combinations[x]
     await (async () => {
         /**
          * The prompts for the AI.
+         * @type {prompts}
+         * @property {string} system - The system prompt.
+         * @property {string} user - The user prompt.
          */
         const prompts: prompts = {
-            system: await constructPrompt('system'),
-            user: await constructPrompt('user', currentCombination)
+            system: (await constructPrompt('system')).trimLeft(),
+            user: (await constructPrompt('user', currentCombination)).trimLeft()
         }
 
-        console.log('System prompt:')
         console.log(prompts.system)
-        console.log('\n')
-        console.log('User prompt:')
         console.log(prompts.user)
+
+        /**
+         * The OpenAI Class.
+         */
+        const openai = new OpenAI({
+            apiKey: process.env.GPT_KEY
+        })
+
+        spinner = ora('Generating video script').start()
+
+        try {
+            let videoScript: ChatCompletion | string = await openai.chat.completions.create({
+                messages: [
+                    { "role": "system", "content": prompts.system },
+                    { "role": "user", "content": prompts.user }
+                ],
+                model: 'ft:gpt-3.5-turbo-0613:tefan::8HXeI0yK',
+                temperature: 1,
+                max_tokens: 256
+            })
+
+            videoScript = videoScript.choices[0].message.content as unknown as string
+
+            fs.writeFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), videoScript)
+
+            spinner.succeed('Generated video script and written to file.')
+        }
+
+        catch (error) {
+            spinner.fail('Failed to generate video script.')
+            crashHandler('crash')
+            process.exit(1)
+        }
+
     })()
 }
 
+
 /**
- * @param It can recieve `system` or `user` as a string.
+ * @param type can recieve `system` or `user` as a string.
+ * @param currentCombination `(optional)` can recieve The current combination of videos.
  * @returns The Prompt
  */
 async function constructPrompt(type: string, currentCombination?: subCombination): Promise<string> {
@@ -355,39 +396,11 @@ async function constructPrompt(type: string, currentCombination?: subCombination
 
     if (type === 'system') {
         prompt =
-            `You are great at doing many things, but your output is bad, here is how to format the output in .json format:
-
-{
-    "video1": {
-        "isUsed": true or false depending if you want to use it,
-        "subtitle": "Insert clip subtitle here"
-    },
-    "video2": {
-        "isUsed": true or false depending if you want to use it,
-        "subtitle": "Insert clip subtitle here"
-    },
-    "video3": {
-        "isUsed": true or false depending if you want to use it,
-        "subtitle": "Insert clip subtitle here"
-    }
-}
-
-Here are the optional settings that can be enabled by the user:
-isUsed = used when the user sets the prompt setting 'dynamicVideoSelection' to true, it allows you to determine if a video shall be used. If you determine that the video shoudnt be used, then dont use it by setting for the video object the isUsed property to "false"
-    more on the "isUsed" property:
-    - You must only be allowed to select 1 video to not be used if you determine that it shouldnt be used and if the user set it to true
-
-Settings for generation:
-dynamicVideoSelection: ${app.settings.easy.dynamicVideoSelection}
-
-General Rules to follow for any kind of video:
-1. Do not ever say the word "embrace" 
-2. match the speakers word per minute with the times given in the user prompt
-3. Do not ever embrace or suggest to find courage in stuff. You often say stuff like "find courage in darkness" which sounds depressing.
-4. Do not ever say the word "embrace" 
-
-What matters most during production.
-Accord more importance to the general theme of the video than the individual video clips, 80% to the video theme and let the video clips influence you just a bit so that the message isn't not-matching to the content `
+            `You are an AI assistant for Stefan-AI, an app that uses a powerful settings file and inputted videos to create short form content for TikTok and YouTube Shorts.
+            Your task is to process the given video data and generate a JSON output that determines which videos should be used in the content creation process, and provide a message for each video.
+            You have the following features at your disposal: Dynamic Video Selection, Min, Max & Preferred Length, Rules, Desired Output, General Theme, Video Themes.
+            Based on these features, generate a JSON output in the following format: {\"video1\": {\"isUsed\": true, \"message\": \"insert message here\"}, \"video2\": {\"isUsed\": true, \"message\": \"insert message here\"}, \"video3\": {\"isUsed\": true, \"message\": \"insert message here\"}}.
+            Remember, the number of objects in the output should match the number of videos provided in the prompt, also, if its convenient, you can make it so that the message splits on multiple videos, just add a property to the JSON named "extends" and set it to true if thats the case.`
     }
 
     else if (type === 'user') {
@@ -424,32 +437,28 @@ Accord more importance to the general theme of the video than the individual vid
         for (const key in videoCombination) {
             arrayOfThemes.push(videoCombination[key].theme)
         }
-
-        console.log(arrayOfThemes)
-
         prompt =
             `I will need you to make a video script for the following videos:
-${arrayOfThemes.map((theme, index) => `${index + 1}. ${theme}`).join('\n')}
+            ${arrayOfThemes.map((theme, index) => `${index + 1}. ${theme}`).join('\n')}
 
-The general theme the videos need to respect:
-${app.settings.advanced.generalTheme}
-    
-Information regarding how long you need to make the script in total:
-- minimum length: ${app.settings.easy.length.min} seconds
-- maximum length: ${app.settings.easy.length.max} seconds
-- preferred length: ${app.settings.easy.length.preferred} seconds
-- Current Voice Speaking Rate: 100 Words per Minute
-* Make sure to calculate how many words you can squeeze into each subtitle.
-Try to reach the limit
+            The general theme the videos need to respect:
+            ${app.settings.advanced.generalTheme}
 
-Here are the rules you need to follow:
-${app.promptRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
+            Dynamic Video Selection: ${app.settings.easy.dynamicVideoSelection ? 'Enabled' : 'Disabled'}
+            Desired Output: ${app.settings.advanced.desiredOutput}
 
-Desired output:
-"${app.settings.advanced.desiredOutput}"
+            Information regarding how long you need to make the script in total:
+            - Minimum length: ${app.settings.easy.length.min} seconds
+            - Maximum length: ${app.settings.easy.length.max} seconds
+            - Preferred length: ${app.settings.easy.length.preferred} seconds
+            ! Current Voice Speaking Rate: 180 Words per Minute
+            * Make sure to calculate how many words you can fit into each subtitle. Try to reach the limit
+            * The time limit is for all clips length combined with their messages.
 
-Respond back with just the subtitles in the JSON format in the system prompt and make sure to not use whitespace in JSON
-`
+            Here are the rules you need to follow:
+            ${app.promptRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
+            Please process the videos.
+            `
     }
 
     return prompt

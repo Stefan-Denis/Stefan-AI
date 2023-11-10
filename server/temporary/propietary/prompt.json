@@ -1,0 +1,14 @@
+{
+    "video1": {
+        "isUsed": true,
+        "message": "You have to be willing to take risks."
+    },
+    "video2": {
+        "isUsed": true,
+        "message": "There is no growth without risk."
+    },
+    "video3": {
+        "isUsed": true,
+        "message": "Change your life!"
+    }
+}

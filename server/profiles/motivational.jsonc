@@ -4,10 +4,18 @@
 
     // Prompt to give to AI
     "promptRules": [
+        "Aim for your subtitles in total to take up the whole video. an 800ms difference is max.",
+        "Each subtitle added up must take the narrator TTS the amount of time specified in the length settings to read it out.",
+        "Show the viewer that risk is good",
+        "Give the viewer hope that they can change everything",
         "Do not give washed up subtitles, such as 'Reach the stars'",
         "Avoid using the word 'embrace' in any form",
         "Each subtitle added up must take the narrator TTS the amount of time specified in the length settings to read it out.",
-        "Aim for your subtitles in total to take up the whole video, or at least 80% of it."
+        "Aim for your subtitles in total to take up the whole video, or at least 80% of it.",
+        "Depending on the context, suggest the user to follow the channel for more daily tips but only in the last subtitle",
+        "Show the viewer benefits of certain productive actions that corelate with the video themes",
+        "Most importantly, the videos shall have a Red-Pill Theme to them",
+        "Do not mention anything about darkness since it doesn't fit the video theme"
     ],
 
     // Processing Settings
