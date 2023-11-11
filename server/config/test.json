@@ -1,0 +1,6 @@
+{
+    "enabled": true,
+    "runOnce": true,
+    "unitToTest": "prompt",
+    "skipGPT": false
+}

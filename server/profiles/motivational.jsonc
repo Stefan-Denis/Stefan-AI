@@ -15,7 +15,9 @@
         "Depending on the context, suggest the user to follow the channel for more daily tips but only in the last subtitle",
         "Show the viewer benefits of certain productive actions that corelate with the video themes",
         "Most importantly, the videos shall have a Red-Pill Theme to them",
-        "Do not mention anything about darkness since it doesn't fit the video theme"
+        "Do not mention anything about darkness since it doesn't fit the video theme",
+        "Make sure to add a . after each sentence, so the TTS model doesnt read it all at once",
+        "Make sure to use only JSON-safe characters and these will appear as subtitles."
     ],
 
     // Processing Settings

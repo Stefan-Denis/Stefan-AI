@@ -198,13 +198,19 @@ app.post('/calculate-videos', (req, res) => {
 });
 //! MAIN PRODUCTION
 app.get('/start', (req, res) => {
-    const scriptPath = path.join(__dirname, '../', 'cli', 'init.ps1');
-    const result = spawnSync('powershell.exe', [scriptPath], { cwd: path.dirname(scriptPath) });
-    if (result.status !== 0) {
-        res.status(500).send(result.stderr.toString());
+    function callScript() {
+        const scriptPath = path.join(__dirname, '../', 'cli', 'init.ps1');
+        const result = spawnSync('powershell.exe', [scriptPath], { cwd: path.dirname(scriptPath) });
+        if (result.status === 2) {
+            callScript();
+        }
+        else if (result.status !== 0) {
+            res.status(500).send(result.stderr.toString());
+        }
+        else {
+            res.sendStatus(200);
+        }
     }
-    else {
-        res.sendStatus(200);
-    }
+    callScript();
 });
 app.listen(80, '127.0.0.1');
