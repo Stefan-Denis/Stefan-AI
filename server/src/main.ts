@@ -7,8 +7,11 @@ import path from 'path'
 import OpenAI from 'openai'
 import ora, { Ora } from 'ora'
 import dotenv from 'dotenv'
-import { APIPromise } from 'openai/core'
 import { ChatCompletion } from 'openai/resources'
+import chalk from 'chalk'
+
+console.log(chalk.whiteBright('Stefan-AI') + chalk.whiteBright(' Video Automation Script Generator'))
+console.log(chalk.bgWhiteBright(chalk.blackBright('Version: 2.0')))
 
 /**
  * __DIRNAME VARIABLE
@@ -192,7 +195,7 @@ if (notExists(crashFile)) {
  */
 let _crashStatus = fs.readFileSync(crashFile, 'utf-8')
 const crashStatus: crashHandlerStatus = _crashStatus === 'false' ? false : true
-crashHandler('no-crash')
+crashHandler('crash')
 
 
 // Load the settings from the profile file.
@@ -314,7 +317,8 @@ if (!crashStatus) {
         process
     }
 } else {
-    console.log('Combinations were not generated because the app crashed.')
+    console.log(chalk.yellowBright('\n\n' + 'Combinations were not generated because the app crashed or an error occoured during processing.'))
+    console.log(chalk.yellowBright('Warning: ') + `App will continue from previous combination. \n  If you want to start from the beginning, reset through the ${chalk.whiteBright('Stefan-AI')} app.`)
 }
 
 // ^ Main processing
@@ -322,69 +326,166 @@ const combinationsFilePath = path.join(__dirname, '../', 'config', 'combinations
 const combinations: combination = JSON.parse(fs.readFileSync(combinationsFilePath, 'utf-8'))
 
 /**
- * Interface representing a system and user prompt.
+ * Test Interface
+ * @interface
+ * @property {string} test - Test
+ * @property {string} unitToTest - Input a unit to test from following list: 
+ * - `prompt` (add skipGPT to skip GPT prompt generation and set to `true`)
  */
-interface prompts extends Object {
-    system: string
-    user: string
+interface testInterface extends Object {
+    enabled: boolean
+    unitToTest: string
+    skipGPT: true
+    runOnce: boolean
 }
 
-const test: boolean = true; test ? console.log('Test mode is enabled\n') : null
+const test: testInterface = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'config', 'test.json'), 'utf-8'))
 let spinner: Ora
 
-for (let x = 0; x < (test ? 1 : combinations.length); x++) {
+for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
+    console.log(`\n\n${chalk.whiteBright('Combination:')} ${x + 1}`)
+
     const currentCombination = combinations[x]
     await (async () => {
-        /**
-         * The prompts for the AI.
-         * @type {prompts}
-         * @property {string} system - The system prompt.
-         * @property {string} user - The user prompt.
-         */
-        const prompts: prompts = {
-            system: (await constructPrompt('system')).trimLeft(),
-            user: (await constructPrompt('user', currentCombination)).trimLeft()
+
+        async function subtitles() {
+            if ((test.enabled && test.unitToTest === 'prompt') || !test.enabled) {
+                /**
+                 * Interface representing a system and user prompt.
+                 */
+                interface prompts extends Object {
+                    system: string
+                    user: string
+                }
+
+                /**
+                 * The prompts for the AI.
+                 * @type {prompts}
+                 * @property {string} system - The system prompt.
+                 * @property {string} user - The user prompt.
+                 */
+                const prompts: prompts = {
+                    system: (await constructPrompt('system')).trimStart(),
+                    user: (await constructPrompt('user', currentCombination)).trimStart()
+                }
+
+                /**
+                 * The OpenAI Class.
+                 */
+                const openai = new OpenAI({
+                    apiKey: process.env.GPT_KEY
+                })
+
+                spinner = ora('Generating video script').start()
+
+                if (!test.skipGPT || !test.enabled) {
+                    try {
+                        let videoScript: ChatCompletion | string = await openai.chat.completions.create({
+                            messages: [
+                                { "role": "system", "content": prompts.system },
+                                { "role": "user", "content": prompts.user }
+                            ],
+                            model: 'ft:gpt-3.5-turbo-0613:tefan::8HXeI0yK',
+                            temperature: 1,
+                            max_tokens: 256
+                        })
+
+                        videoScript = videoScript.choices[0].message.content as unknown as string
+                        fs.writeFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), videoScript)
+
+                        spinner.succeed('Generated video script and written to file.')
+                    }
+
+                    catch (error) {
+                        spinner.fail('Failed to generate video script.')
+
+                        /**
+                         * Restart
+                         */
+                        setTimeout(async () => {
+                            await subtitles()
+                        }, 1500)
+                    }
+                }
+
+                // Perform checks on the script
+                spinner = ora('Performing checks on the script \n').start()
+
+                interface Video {
+                    isUsed?: boolean
+                    extends?: boolean
+                    message?: string
+                }
+
+                interface StefanAIVideoScript {
+                    error?: string
+                    [key: string]: Video | string | undefined
+                }
+
+
+                // Validate if its correct JSON
+                try {
+                    JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'))
+                } catch {
+                    spinner.clear()
+                    console.log(chalk.redBright('Error: ') + 'Improper JSON formatting, restart the app.')
+
+                    /**
+                     * Restart
+                     */
+                    setTimeout(async () => {
+                        await subtitles()
+                    }, 1500)
+                }
+
+                // Due to it working, it will declare videoScript
+                const videoScript: StefanAIVideoScript = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'))
+
+                // Check if the script has an error
+                if (videoScript.error) {
+                    spinner.clear()
+                    console.log('\n' + chalk.redBright('Error: ') + '\n' + videoScript.error + '\n')
+                    /**
+                     * Restart
+                     */
+                    setTimeout(async () => {
+                        await subtitles()
+                    }, 1500)
+                }
+
+                // Check if AI set all the videos to not be used
+                let allNotUsed = true
+                for (let key in videoScript) {
+                    let video = videoScript[key]
+                    if (typeof video !== 'string' && video?.isUsed) {
+                        allNotUsed = false
+                        break
+                    }
+                }
+
+                // If all videos are not used, set them all to be used
+                if (allNotUsed) {
+                    for (let key in videoScript) {
+                        let video = videoScript[key]
+                        if (typeof video !== 'string' && video?.isUsed !== undefined) {
+                            video.isUsed = true
+                        }
+                    }
+                }
+
+                spinner.clear()
+            }
         }
 
-        console.log(prompts.system)
-        console.log(prompts.user)
 
-        /**
-         * The OpenAI Class.
-         */
-        const openai = new OpenAI({
-            apiKey: process.env.GPT_KEY
-        })
 
-        spinner = ora('Generating video script').start()
-
-        try {
-            let videoScript: ChatCompletion | string = await openai.chat.completions.create({
-                messages: [
-                    { "role": "system", "content": prompts.system },
-                    { "role": "user", "content": prompts.user }
-                ],
-                model: 'ft:gpt-3.5-turbo-0613:tefan::8HXeI0yK',
-                temperature: 1,
-                max_tokens: 256
-            })
-
-            videoScript = videoScript.choices[0].message.content as unknown as string
-
-            fs.writeFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), videoScript)
-
-            spinner.succeed('Generated video script and written to file.')
-        }
-
-        catch (error) {
-            spinner.fail('Failed to generate video script.')
-            crashHandler('crash')
-            process.exit(1)
-        }
-
+        await subtitles()
     })()
 }
 
+crashHandler('no-crash')
+
+/** */
 
 /**
  * @param type can recieve `system` or `user` as a string.
