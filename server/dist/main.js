@@ -264,8 +264,6 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
         yield subtitles();
     }))();
 }
-crashHandler('no-crash');
-/** */
 /**
  * @param type can recieve `system` or `user` as a string.
  * @param currentCombination `(optional)` can recieve The current combination of videos.
