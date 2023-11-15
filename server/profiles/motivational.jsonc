@@ -100,27 +100,6 @@
             "watermark": {
                 "enabled": true,
                 "text": "channel.name"
-            },
-
-            // Apply images
-            "imageApplication": {
-                // Enable image overlays
-                "enabled": true,
-
-                /* 
-                 ** Insert images into the video, using this template
-                 ** ex:
-                */
-
-                "#": {
-                    "name": "story1.png", // mandatory, specify the file name
-                    "interval": "00:00 - auto", // interval in which the video can be placed.
-                    /*
-                     ** Text for AI to read
-                     ** set as `null` with no semicolons, just plain text for no tts 
-                     */
-                    "text": "Reddit, what was a time you had a lot of fun?"
-                }
             }
         }
     }

@@ -1,22 +1,17 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 /**
  * IMPORTS
  */
+import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 import * as commentJson from 'comment-json';
-import fs from 'fs-extra';
-import path from 'path';
-import OpenAI from 'openai';
+import { spawnSync } from 'child_process';
+import ffmpeg from 'fluent-ffmpeg';
 import ora from 'ora';
+import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import fs from 'fs-extra';
 import chalk from 'chalk';
+import util from 'util';
+import path from 'path';
 console.log(chalk.whiteBright('Stefan-AI') + chalk.whiteBright(' Video Automation Script Generator'));
 console.log(chalk.bgWhiteBright(chalk.blackBright('Version: 2.0')));
 /**
@@ -26,6 +21,16 @@ const currentModuleUrl = new URL(import.meta.url);
 export const __dirname = path.dirname(currentModuleUrl.pathname + '../').slice(1);
 // DotENV
 dotenv.config({ path: path.join(__dirname, '../', 'config', '.env') });
+// Set FFmpeg path
+const ffmpegPath = path.join(__dirname, '../', 'modules', 'ffmpeg.exe');
+ffmpeg.setFfmpegPath(ffmpegPath);
+/**
+ * Wait function
+ * @param ms The amount of milliseconds to wait.
+ */
+async function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 /**
  * Checks if a file does not exist.
  * @param file - The path to the file to check.
@@ -164,152 +169,323 @@ let spinner;
 for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
     console.log(`\n\n${chalk.whiteBright('Combination:')} ${x + 1}`);
     const currentCombination = combinations[x];
-    await (() => __awaiter(void 0, void 0, void 0, function* () {
-        function subtitles() {
-            return __awaiter(this, void 0, void 0, function* () {
-                if ((test.enabled && test.unitToTest === 'prompt') || !test.enabled) {
-                    /**
-                     * The prompts for the AI.
-                     * @type {prompts}
-                     * @property {string} system - The system prompt.
-                     * @property {string} user - The user prompt.
-                     */
-                    const prompts = {
-                        system: (yield constructPrompt('system')).trimStart(),
-                        user: (yield constructPrompt('user', currentCombination)).trimStart()
-                    };
-                    /**
-                     * The OpenAI Class.
-                     */
-                    const openai = new OpenAI({
-                        apiKey: process.env.GPT_KEY
-                    });
-                    spinner = ora('Generating video script').start();
-                    if (!test.skipGPT || !test.enabled) {
-                        try {
-                            let videoScript = yield openai.chat.completions.create({
-                                messages: [
-                                    { "role": "system", "content": prompts.system },
-                                    { "role": "user", "content": prompts.user }
-                                ],
-                                model: 'ft:gpt-3.5-turbo-0613:tefan::8HXeI0yK',
-                                temperature: 1,
-                                max_tokens: 256
-                            });
-                            videoScript = videoScript.choices[0].message.content;
-                            fs.writeFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), videoScript);
-                            spinner.succeed('Generated video script and written to file.');
-                        }
-                        catch (error) {
-                            spinner.fail('Failed to generate video script.');
-                            /**
-                             * Restart
-                             */
-                            setTimeout(() => __awaiter(this, void 0, void 0, function* () {
-                                yield subtitles();
-                            }), 1500);
-                        }
-                    }
-                    // Perform checks on the script
-                    spinner = ora('Performing checks on the script \n').start();
-                    // Validate if its correct JSON
+    await (async () => {
+        async function subtitles() {
+            if ((test.enabled && test.unitToTest === 'subtitles') || !test.enabled) {
+                /**
+                 * The prompts for the AI.
+                 * @type {prompts}
+                 * @property {string} system - The system prompt.
+                 * @property {string} user - The user prompt.
+                 */
+                const prompts = {
+                    system: (await constructPrompt('system')).trimStart(),
+                    user: (await constructPrompt('user', currentCombination)).trimStart()
+                };
+                /**
+                 * The OpenAI Class.
+                 */
+                const openai = new OpenAI({
+                    apiKey: process.env.GPT_KEY
+                });
+                spinner = ora('Generating video script').start();
+                if (!test.skipGPT || !test.enabled) {
                     try {
-                        JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'));
+                        let videoScript = await openai.chat.completions.create({
+                            messages: [
+                                { "role": "system", "content": prompts.system },
+                                { "role": "user", "content": prompts.user }
+                            ],
+                            model: 'ft:gpt-3.5-turbo-0613:tefan::8HXeI0yK',
+                            temperature: 1,
+                            max_tokens: 256
+                        });
+                        videoScript = videoScript.choices[0].message.content;
+                        fs.writeFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), videoScript);
+                        spinner.succeed('Generated video script and written to file.');
                     }
-                    catch (_a) {
-                        spinner.clear();
-                        console.log(chalk.redBright('Error: ') + 'Improper JSON formatting, restart the app.');
+                    catch (error) {
+                        spinner.fail('Failed to generate video script.');
                         /**
                          * Restart
                          */
-                        setTimeout(() => __awaiter(this, void 0, void 0, function* () {
-                            yield subtitles();
-                        }), 1500);
+                        await wait(1000);
+                        console.clear();
+                        await subtitles();
+                        return;
                     }
-                    // Due to it working, it will declare videoScript
-                    const videoScript = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'));
-                    // Check if the script has an error
-                    if (videoScript.error) {
-                        spinner.clear();
-                        console.log('\n' + chalk.redBright('Error: ') + '\n' + videoScript.error + '\n');
-                        /**
-                         * Restart
-                         */
-                        setTimeout(() => __awaiter(this, void 0, void 0, function* () {
-                            yield subtitles();
-                        }), 1500);
+                }
+                if (test.skipGPT) {
+                    await wait(1000);
+                    spinner.succeed('Skipped GPT prompt generation.');
+                }
+                // Perform checks on the script
+                spinner = ora('Performing checks on the script \n').start();
+                await wait(1000);
+                // Validate if its correct JSON
+                try {
+                    JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'));
+                    spinner.succeed('Validated JSON.');
+                }
+                catch {
+                    spinner.fail('Failed to parse JSON.');
+                    /**
+                     * Restart
+                     */
+                    await wait(1000);
+                    console.clear();
+                    await subtitles();
+                    return;
+                }
+                // Due to it working, it will declare videoScript
+                const videoScript = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'));
+                // Check if the script has an error
+                if (videoScript.error) {
+                    spinner.fail('Error in video script.');
+                    console.log('\n' + chalk.redBright('Error: ') + '\n' + videoScript.error);
+                    console.log('\n');
+                    /**
+                     * Restart
+                     */
+                    await wait(1000);
+                    console.clear();
+                    await subtitles();
+                    return;
+                }
+                // Check if AI set all the videos to not be used
+                let allNotUsed = true;
+                for (let key in videoScript) {
+                    let video = videoScript[key];
+                    if (typeof video !== 'string' && video?.isUsed) {
+                        allNotUsed = false;
+                        break;
                     }
-                    // Check if AI set all the videos to not be used
-                    let allNotUsed = true;
+                }
+                // If all videos are not used, set them all to be used
+                if (allNotUsed) {
                     for (let key in videoScript) {
                         let video = videoScript[key];
-                        if (typeof video !== 'string' && (video === null || video === void 0 ? void 0 : video.isUsed)) {
-                            allNotUsed = false;
-                            break;
+                        if (typeof video !== 'string' && video?.isUsed !== undefined) {
+                            video.isUsed = true;
                         }
                     }
-                    // If all videos are not used, set them all to be used
-                    if (allNotUsed) {
-                        for (let key in videoScript) {
-                            let video = videoScript[key];
-                            if (typeof video !== 'string' && (video === null || video === void 0 ? void 0 : video.isUsed) !== undefined) {
-                                video.isUsed = true;
-                            }
-                        }
-                    }
-                    spinner.clear();
                 }
-            });
+            }
         }
-        yield subtitles();
-    }))();
+        /**
+         * Parses the SSML and returns the parsed SSML to a file.
+         */
+        async function SSMLParser() {
+            if ((test.enabled && test.unitToTest === 'SSMLParser') || !test.enabled) {
+                spinner = ora('Parsing SSML').start();
+                await wait(1200);
+                let matrix = [];
+                const ssmlFilePath = path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.ssml');
+                const videoScriptJSON = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'));
+                for (const key in videoScriptJSON) {
+                    const video = videoScriptJSON[key];
+                    if (typeof video !== 'string' && video?.isUsed) {
+                        matrix.push([video.message]);
+                    }
+                    if (typeof video !== 'string' && video?.extends) {
+                        matrix[matrix.length - 1].push(true);
+                    }
+                }
+                let SSML = '<speak>\n';
+                try {
+                    for (let x = 0; x < matrix.length; x++) {
+                        let subtitle = matrix[x][0].replace(/,/g, ',<break time="0.4s"/>');
+                        subtitle = subtitle.replace(/\bif\b/gi, '<emphasis level="strong">if</emphasis>');
+                        SSML += `<p><s>${subtitle}</s></p>\n`;
+                        if (matrix[x][1]) {
+                            SSML += '<break time="0.17s"/>\n';
+                        }
+                        else if (x === matrix.length - 1) {
+                        }
+                        else {
+                            SSML += '<break time="0.5s"/>\n';
+                        }
+                    }
+                }
+                finally {
+                    SSML += '</speak>';
+                }
+                fs.writeFileSync(ssmlFilePath, SSML);
+                spinner.succeed('Parsed SSML.');
+            }
+        }
+        const voice = Math.random() > 0.5 ? "en-US-Neural2-D" : "en-US-Neural2-J";
+        async function TTS() {
+            if ((test.enabled && test.unitToTest === 'TTS') || !test.enabled) {
+                fs.emptydirSync(path.join(__dirname, '../', 'temporary', 'editing', 'audio'));
+                /**
+                 * The voice to use for the TTS.
+                 */
+                // Concatenate the files depending on the settings
+                spinner = ora('Creating TTS file').start();
+                const SSMLContents = fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.ssml'), 'utf-8');
+                await createTTS(SSMLContents, 'audio', voice, true);
+                spinner.succeed('Created TTS file');
+            }
+        }
+        async function getVideoLengths() {
+            const subtitlesLength = [];
+            if ((test.enabled && test.unitToTest === 'trimVideos') || !test.enabled) {
+                spinner = ora('Retrieving Video Lengths').start();
+                // Get the length of each subtitle
+                async function testLength(videonr) {
+                    let SSML = '<speak>\n';
+                    // Parse to SSMl
+                    try {
+                        let subtitle = videoScriptJSON[`video${videonr}`].message.replace(/,/g, ',<break time="0.4s"/>');
+                        subtitle = subtitle.replace(/\bif\b/gi, '<emphasis level="strong">if</emphasis>');
+                        SSML += `<p><s>${subtitle}</s></p>\n`;
+                        if (videoScriptJSON[`video${videonr}`].extends) {
+                            SSML += '<break time="0.17s"/>\n';
+                        }
+                        else {
+                            SSML += '<break time="0.5s"/>\n';
+                        }
+                    }
+                    finally {
+                        SSML += '</speak>';
+                    }
+                    await createTTS(SSML, 'temp', voice, true);
+                    // Get the length of the audio file
+                    const tempAudioFilePath = path.join(__dirname, '../', 'temporary', 'editing', 'audio', `temp.mp3`);
+                    const ffprobe = spawnSync(path.join(__dirname, '../', 'modules', 'ffprobe.exe'), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', tempAudioFilePath]);
+                    subtitlesLength.push(parseFloat(Number(ffprobe.stdout.toString()).toFixed(3)));
+                }
+                const videoScriptJSON = await JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'));
+                const keys = Object.keys(videoScriptJSON);
+                for (const key of keys) {
+                    const videoNumber = parseInt(key.replace('video', ''));
+                    await testLength(videoNumber);
+                }
+                spinner.succeed('Got video durations');
+            }
+            return subtitlesLength;
+        }
+        async function trimVideos(durations) {
+            if ((test.enabled && test.unitToTest === 'trimVideos') || !test.enabled) {
+                try {
+                    const trimDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'trim');
+                    fs.emptyDirSync(trimDir);
+                    for (let index = 0; index < durations.length; index++) {
+                        spinner = ora('Trimming video ' + (index + 1)).start();
+                        const duration = durations[index];
+                        const currentClip = currentCombination[index];
+                        const videoPath = path.join(__dirname, '../', 'videos', currentClip);
+                        const video = ffmpeg(videoPath);
+                        video.setStartTime(0);
+                        video.setDuration(duration);
+                        video.output(path.join(trimDir, `${index + 1}.mp4`));
+                        await new Promise((resolve, reject) => {
+                            video.on('error', (error) => {
+                                console.log(error);
+                                reject(error);
+                            });
+                            video.on('end', () => {
+                                spinner.succeed('Trimmed video ' + (index + 1));
+                                resolve(true);
+                            });
+                            video.run();
+                        });
+                    }
+                }
+                catch {
+                    spinner.fail('Failed to trim videos');
+                }
+            }
+        }
+        await subtitles();
+        await SSMLParser();
+        await TTS();
+        // Trim Videos
+        /**
+         * @param lengths
+         * @returns The video lengths
+         * Returns the lengths of each video in an array
+         */
+        const lengths = await getVideoLengths();
+        await trimVideos(lengths);
+        // TODO: Continue the app
+    })();
+}
+/**
+ * @param script
+ * @param filename
+ * @param voice
+ * Keep the voice the same during the whole subtitle generation process
+ * Creates 1 mp3 file with the given filename inside __dirname + ../temporary/propietary
+ */
+async function createTTS(script, filename, voice, ssml) {
+    const client = new TextToSpeechClient();
+    const request = {
+        "audioConfig": {
+            "audioEncoding": "LINEAR16",
+            "effectsProfileId": [
+                "small-bluetooth-speaker-class-device"
+            ],
+            "pitch": -15,
+            "speakingRate": 0.931
+        },
+        "input": ssml ? { "ssml": script } : { "text": script },
+        "voice": {
+            "languageCode": "en-US",
+            "name": voice
+        }
+    };
+    // Write mp3 data to file
+    const [response] = await client.synthesizeSpeech(request);
+    const writeFile = util.promisify(fs.writeFile);
+    await writeFile(path.join(__dirname, '../', 'temporary', 'editing', 'audio', `${filename}.mp3`), response.audioContent, 'binary');
 }
 /**
  * @param type can recieve `system` or `user` as a string.
  * @param currentCombination `(optional)` can recieve The current combination of videos.
  * @returns The Prompt
  */
-function constructPrompt(type, currentCombination) {
-    return __awaiter(this, void 0, void 0, function* () {
-        let prompt = '';
-        if (type === 'system') {
-            prompt =
-                `You are an AI assistant for Stefan-AI, an app that uses a powerful settings file and inputted videos to create short form content for TikTok and YouTube Shorts.
+async function constructPrompt(type, currentCombination) {
+    let prompt = '';
+    if (type === 'system') {
+        prompt =
+            `You are an AI assistant for Stefan-AI, an app that uses a powerful settings file and inputted videos to create short form content for TikTok and YouTube Shorts.
             Your task is to process the given video data and generate a JSON output that determines which videos should be used in the content creation process, and provide a message for each video.
             You have the following features at your disposal: Dynamic Video Selection, Min, Max & Preferred Length, Rules, Desired Output, General Theme, Video Themes.
             Based on these features, generate a JSON output in the following format: {\"video1\": {\"isUsed\": true, \"message\": \"insert message here\"}, \"video2\": {\"isUsed\": true, \"message\": \"insert message here\"}, \"video3\": {\"isUsed\": true, \"message\": \"insert message here\"}}.
             Remember, the number of objects in the output should match the number of videos provided in the prompt, also, if its convenient, you can make it so that the message splits on multiple videos, just add a property to the JSON named "extends" and set it to true if thats the case.`;
+    }
+    else if (type === 'user') {
+        if (!currentCombination) {
+            console.error('currentCombination is undefined for user prompt');
+            process.exit(1);
         }
-        else if (type === 'user') {
-            if (!currentCombination) {
-                console.error('currentCombination is undefined for user prompt');
-                process.exit(1);
-            }
-            // Determine video Themes
-            const videoThemesPath = path.join(__dirname, '../', 'config', 'theme.json');
-            const videoThemes = JSON.parse(fs.readFileSync(videoThemesPath, 'utf-8'));
-            const videoDirPath = path.join(__dirname, '../', 'videos');
-            const amountOfVideos = fs.readdirSync(videoDirPath).filter(file => path.extname(file) === '.mp4').length;
-            const videoCombination = {};
-            for (let i = 1; i <= app.settings.easy.videosPerCombination; i++) {
-                videoCombination[`video${i}`] = {
-                    theme: "",
-                };
-            }
-            for (const key in videoCombination) {
-                for (let x = 0; x < amountOfVideos; x++) {
-                    const video = currentCombination[parseInt(key.replace('video', '')) - 1];
-                    if (video === videoThemes[x][0]) {
-                        videoCombination[key].theme = videoThemes[x][1];
-                    }
+        // Determine video Themes
+        const videoThemesPath = path.join(__dirname, '../', 'config', 'theme.json');
+        const videoThemes = JSON.parse(fs.readFileSync(videoThemesPath, 'utf-8'));
+        const videoDirPath = path.join(__dirname, '../', 'videos');
+        const amountOfVideos = fs.readdirSync(videoDirPath).filter(file => path.extname(file) === '.mp4').length;
+        const videoCombination = {};
+        for (let i = 1; i <= app.settings.easy.videosPerCombination; i++) {
+            videoCombination[`video${i}`] = {
+                theme: "",
+            };
+        }
+        for (const key in videoCombination) {
+            for (let x = 0; x < amountOfVideos; x++) {
+                const video = currentCombination[parseInt(key.replace('video', '')) - 1];
+                if (video === videoThemes[x][0]) {
+                    videoCombination[key].theme = videoThemes[x][1];
                 }
             }
-            let arrayOfThemes = [];
-            for (const key in videoCombination) {
-                arrayOfThemes.push(videoCombination[key].theme);
-            }
-            prompt =
-                `I will need you to make a video script for the following videos:
+        }
+        let arrayOfThemes = [];
+        for (const key in videoCombination) {
+            arrayOfThemes.push(videoCombination[key].theme);
+        }
+        prompt =
+            `I will need you to make a video script for the following videos:
             ${arrayOfThemes.map((theme, index) => `${index + 1}. ${theme}`).join('\n')}
 
             The general theme the videos need to respect:
@@ -328,11 +504,10 @@ function constructPrompt(type, currentCombination) {
 
             Here are the rules you need to follow:
             ${app.promptRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
-            Please process the videos.
+            Please process the videos and generate the subtitles for them in fluent english only.
             `;
-        }
-        return prompt;
-    });
+    }
+    return prompt;
 }
 // Stop the app
 crashHandler('no-crash');

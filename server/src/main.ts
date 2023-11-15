@@ -1,14 +1,18 @@
 /**
  * IMPORTS
  */
-import * as commentJson from 'comment-json'
-import fs from 'fs-extra'
-import path from 'path'
-import OpenAI from 'openai'
-import ora, { Ora } from 'ora'
-import dotenv from 'dotenv'
+import { TextToSpeechClient } from '@google-cloud/text-to-speech'
 import { ChatCompletion } from 'openai/resources'
+import * as commentJson from 'comment-json'
+import { spawnSync } from 'child_process'
+import ffmpeg from 'fluent-ffmpeg'
+import ora, { Ora } from 'ora'
+import OpenAI from 'openai'
+import dotenv from 'dotenv'
+import fs from 'fs-extra'
 import chalk from 'chalk'
+import util from 'util'
+import path from 'path'
 
 console.log(chalk.whiteBright('Stefan-AI') + chalk.whiteBright(' Video Automation Script Generator'))
 console.log(chalk.bgWhiteBright(chalk.blackBright('Version: 2.0')))
@@ -21,6 +25,10 @@ export const __dirname = path.dirname(currentModuleUrl.pathname + '../').slice(1
 
 // DotENV
 dotenv.config({ path: path.join(__dirname, '../', 'config', '.env') })
+
+// Set FFmpeg path
+const ffmpegPath = path.join(__dirname, '../', 'modules', 'ffmpeg.exe')
+ffmpeg.setFfmpegPath(ffmpegPath)
 
 /**
  * Represents the settings for a video automation profile.
@@ -150,6 +158,25 @@ interface VideoAutomationSettings extends Object {
     }
 }
 
+// Extra interfaces
+interface Video {
+    isUsed?: boolean
+    extends?: boolean
+    message?: string
+}
+
+interface StefanAIVideoScript {
+    error?: string
+    [key: string]: Video | string | undefined
+}
+
+/**
+ * Wait function
+ * @param ms The amount of milliseconds to wait.
+ */
+async function wait(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
 
 /**
  * Checks if a file does not exist.
@@ -330,7 +357,10 @@ const combinations: combination = JSON.parse(fs.readFileSync(combinationsFilePat
  * @interface
  * @property {string} test - Test
  * @property {string} unitToTest - Input a unit to test from following list: 
- * - `prompt` (add skipGPT to skip GPT prompt generation and set to `true`)
+ * - `subtitles` (add skipGPT to skip GPT prompt generation and set to `true`)
+ * - `SSMLParser` 
+ * - `TTS`
+ * - `trimVideos`
  */
 interface testInterface extends Object {
     enabled: boolean
@@ -349,7 +379,7 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
     await (async () => {
 
         async function subtitles() {
-            if ((test.enabled && test.unitToTest === 'prompt') || !test.enabled) {
+            if ((test.enabled && test.unitToTest === 'subtitles') || !test.enabled) {
                 /**
                  * Interface representing a system and user prompt.
                  */
@@ -402,40 +432,37 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                         /**
                          * Restart
                          */
-                        setTimeout(async () => {
-                            await subtitles()
-                        }, 1500)
+                        await wait(1000)
+                        console.clear()
+                        await subtitles()
+                        return
                     }
+                }
+
+                if (test.skipGPT) {
+                    await wait(1000)
+                    spinner.succeed('Skipped GPT prompt generation.')
                 }
 
                 // Perform checks on the script
                 spinner = ora('Performing checks on the script \n').start()
-
-                interface Video {
-                    isUsed?: boolean
-                    extends?: boolean
-                    message?: string
-                }
-
-                interface StefanAIVideoScript {
-                    error?: string
-                    [key: string]: Video | string | undefined
-                }
+                await wait(1000)
 
 
                 // Validate if its correct JSON
                 try {
                     JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'))
+                    spinner.succeed('Validated JSON.')
                 } catch {
-                    spinner.clear()
-                    console.log(chalk.redBright('Error: ') + 'Improper JSON formatting, restart the app.')
+                    spinner.fail('Failed to parse JSON.')
 
                     /**
                      * Restart
                      */
-                    setTimeout(async () => {
-                        await subtitles()
-                    }, 1500)
+                    await wait(1000)
+                    console.clear()
+                    await subtitles()
+                    return
                 }
 
                 // Due to it working, it will declare videoScript
@@ -443,14 +470,17 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
 
                 // Check if the script has an error
                 if (videoScript.error) {
-                    spinner.clear()
-                    console.log('\n' + chalk.redBright('Error: ') + '\n' + videoScript.error + '\n')
+                    spinner.fail('Error in video script.')
+                    console.log('\n' + chalk.redBright('Error: ') + '\n' + videoScript.error)
+                    console.log('\n')
+
                     /**
                      * Restart
                      */
-                    setTimeout(async () => {
-                        await subtitles()
-                    }, 1500)
+                    await wait(1000)
+                    console.clear()
+                    await subtitles()
+                    return
                 }
 
                 // Check if AI set all the videos to not be used
@@ -472,16 +502,214 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                         }
                     }
                 }
-
-                spinner.clear()
             }
         }
 
+        /**
+         * Parses the SSML and returns the parsed SSML to a file.
+         */
+        async function SSMLParser() {
+            if ((test.enabled && test.unitToTest === 'SSMLParser') || !test.enabled) {
+                spinner = ora('Parsing SSML').start()
+                await wait(1200)
 
+                let matrix: Array<Array<string | boolean>> = []
+
+                const ssmlFilePath = path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.ssml')
+                const videoScriptJSON: StefanAIVideoScript = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'))
+
+                for (const key in videoScriptJSON) {
+                    const video = videoScriptJSON[key]
+                    if (typeof video !== 'string' && video?.isUsed) {
+                        matrix.push([video.message as string])
+                    }
+
+                    if (typeof video !== 'string' && video?.extends) {
+                        matrix[matrix.length - 1].push(true)
+                    }
+                }
+
+                let SSML = '<speak>\n'
+
+                try {
+                    for (let x = 0; x < matrix.length; x++) {
+                        let subtitle = (matrix[x][0] as string).replace(/,/g, ',<break time="0.4s"/>')
+                        subtitle = subtitle.replace(/\bif\b/gi, '<emphasis level="strong">if</emphasis>')
+                        SSML += `<p><s>${subtitle}</s></p>\n`
+                        if (matrix[x][1]) {
+                            SSML += '<break time="0.17s"/>\n'
+                        } else if (x === matrix.length - 1) {
+
+                        } else {
+                            SSML += '<break time="0.5s"/>\n'
+                        }
+                    }
+                } finally {
+                    SSML += '</speak>'
+                }
+
+                fs.writeFileSync(ssmlFilePath, SSML)
+                spinner.succeed('Parsed SSML.')
+            }
+        }
+
+        const voice: string = Math.random() > 0.5 ? "en-US-Neural2-D" : "en-US-Neural2-J"
+        async function TTS() {
+            if ((test.enabled && test.unitToTest === 'TTS') || !test.enabled) {
+                fs.emptydirSync(path.join(__dirname, '../', 'temporary', 'editing', 'audio'))
+
+                /**
+                 * The voice to use for the TTS.
+                 */
+
+                // Concatenate the files depending on the settings
+                spinner = ora('Creating TTS file').start()
+
+                const SSMLContents = fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.ssml'), 'utf-8')
+                await createTTS(SSMLContents, 'audio', voice, true)
+
+                spinner.succeed('Created TTS file')
+            }
+        }
+
+        async function getVideoLengths(): Promise<Array<number>> {
+            const subtitlesLength: Array<number> = []
+
+            if ((test.enabled && test.unitToTest === 'trimVideos') || !test.enabled) {
+                spinner = ora('Retrieving Video Lengths').start()
+
+
+                // Get the length of each subtitle
+                async function testLength(videonr: number) {
+                    let SSML: string = '<speak>\n'
+
+                    // Parse to SSMl
+                    try {
+                        let subtitle = ((videoScriptJSON[`video${videonr}`] as Video)!.message as string).replace(/,/g, ',<break time="0.4s"/>')
+                        subtitle = subtitle.replace(/\bif\b/gi, '<emphasis level="strong">if</emphasis>')
+
+                        SSML += `<p><s>${subtitle}</s></p>\n`
+
+                        if ((videoScriptJSON[`video${videonr}`] as Video)!.extends) {
+                            SSML += '<break time="0.17s"/>\n'
+                        } else {
+                            SSML += '<break time="0.5s"/>\n'
+                        }
+                    } finally {
+                        SSML += '</speak>'
+                    }
+
+                    await createTTS(SSML, 'temp', voice, true)
+
+                    // Get the length of the audio file
+                    const tempAudioFilePath = path.join(__dirname, '../', 'temporary', 'editing', 'audio', `temp.mp3`)
+                    const ffprobe = spawnSync(path.join(__dirname, '../', 'modules', 'ffprobe.exe'), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', tempAudioFilePath])
+                    subtitlesLength.push(parseFloat(Number(ffprobe.stdout.toString()).toFixed(3)))
+                }
+
+                const videoScriptJSON: StefanAIVideoScript = await JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'))
+
+                const keys = Object.keys(videoScriptJSON)
+                for (const key of keys) {
+                    const videoNumber = parseInt(key.replace('video', ''))
+                    await testLength(videoNumber)
+                }
+
+                spinner.succeed('Got video durations')
+            }
+
+            return subtitlesLength as Array<number>
+        }
+
+        async function trimVideos(durations: Array<number>) {
+            if ((test.enabled && test.unitToTest === 'trimVideos') || !test.enabled) {
+
+                try {
+                    const trimDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'trim')
+                    fs.emptyDirSync(trimDir)
+
+                    for (let index = 0; index < durations.length; index++) {
+                        spinner = ora('Trimming video ' + (index + 1)).start()
+
+                        const duration = durations[index]
+                        const currentClip = currentCombination[index] as string
+                        const videoPath = path.join(__dirname, '../', 'videos', currentClip)
+
+                        const video = ffmpeg(videoPath)
+
+                        video.setStartTime(0)
+                        video.setDuration(duration)
+                        video.output(path.join(trimDir, `${index + 1}.mp4`))
+
+                        await new Promise((resolve, reject) => {
+                            video.on('error', (error) => {
+                                console.log(error)
+                                reject(error)
+                            })
+
+                            video.on('end', () => {
+                                spinner.succeed('Trimmed video ' + (index + 1))
+                                resolve(true)
+                            })
+
+                            video.run()
+                        })
+                    }
+                } catch {
+                    spinner.fail('Failed to trim videos')
+                }
+            }
+        }
 
         await subtitles()
+        await SSMLParser()
+        await TTS()
+
+        // Trim Videos
+        /**
+         * @param lengths
+         * @returns The video lengths
+         * Returns the lengths of each video in an array
+         */
+        const lengths: Array<number> = await getVideoLengths()
+        await trimVideos(lengths)
+
+        // TODO: Continue the app
     })()
 }
+
+/**
+ * @param script 
+ * @param filename 
+ * @param voice
+ * Keep the voice the same during the whole subtitle generation process
+ * Creates 1 mp3 file with the given filename inside __dirname + ../temporary/propietary
+ */
+async function createTTS(script: string, filename: string, voice: string, ssml?: boolean) {
+    const client = new TextToSpeechClient()
+
+    const request: object = {
+        "audioConfig": {
+            "audioEncoding": "LINEAR16",
+            "effectsProfileId": [
+                "small-bluetooth-speaker-class-device"
+            ],
+            "pitch": -15,
+            "speakingRate": 0.931
+        },
+        "input": ssml ? { "ssml": script } : { "text": script },
+        "voice": {
+            "languageCode": "en-US",
+            "name": voice
+        }
+    }
+
+    // Write mp3 data to file
+    const [response] = await client.synthesizeSpeech(request)
+    const writeFile = util.promisify(fs.writeFile)
+    await writeFile(path.join(__dirname, '../', 'temporary', 'editing', 'audio', `${filename}.mp3`), response.audioContent as string, 'binary')
+}
+
 
 /**
  * @param type can recieve `system` or `user` as a string.
@@ -554,7 +782,7 @@ async function constructPrompt(type: string, currentCombination?: subCombination
 
             Here are the rules you need to follow:
             ${app.promptRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
-            Please process the videos.
+            Please process the videos and generate the subtitles for them in fluent english only.
             `
     }
 

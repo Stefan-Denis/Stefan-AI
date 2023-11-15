@@ -1,28 +1,47 @@
 {
     // Profile Name
     "profile": "motivational",
+
     // Prompt to give to AI
     "promptRules": [
-        "The content must not be washed up",
-        "Do not sell fake dreams",
-        "Do not say cheesy things"
+        "Aim for your subtitles in total to take up the whole video. an 800ms difference is max.",
+        "Each subtitle added up must take the narrator TTS the amount of time specified in the length settings to read it out.",
+        "Show the viewer that risk is good",
+        "Give the viewer hope that they can change everything",
+        "Do not give washed up subtitles, such as 'Reach the stars'",
+        "Avoid using the word 'embrace' in any form",
+        "Each subtitle added up must take the narrator TTS the amount of time specified in the length settings to read it out.",
+        "Aim for your subtitles in total to take up the whole video, or at least 80% of it.",
+        "Depending on the context, suggest the user to follow the channel for more daily tips but only in the last subtitle",
+        "Show the viewer benefits of certain productive actions that corelate with the video themes",
+        "Most importantly, the videos shall have a Red-Pill Theme to them",
+        "Do not mention anything about darkness since it doesn't fit the video theme",
+        "Make sure to add a . after each sentence, so the TTS model doesnt read it all at once",
+        "Make sure to use only JSON-safe characters and these will appear as subtitles."
     ],
+
     // Processing Settings
     "settings": {
         "easy": {
+
             // Create a cool loop from end to start
             "loop": true,
+
             // Shuffle order of combinations (so content does not look reused)
             "shuffle": true,
+
             // How many times a video can be used in the whole process
             // This should not be bigger than the amount of videos the app has been given
             "maxVideoUsage": 2,
+
             // How many clips can appear max in an array of videos
             // Maximum of 6 clips.
             "videosPerCombination": 3,
+
             // App can auto-determine the amount of videos to use per clip for that combination
             // This should not be bigger than the amount of videos the app has been given
             "dynamicVideoSelection": true,
+
             // Length settings in seconds
             "length": {
                 "min": 7,
@@ -30,36 +49,43 @@
                 "preferred": 15
             }
         },
+
         // Custom, specific settings
         "advanced": {
             // Words to appear at once on the screen
-            "maxWordsOnScreen": 2,
+            "maxWordsOnScreen": 1,
+
             /*
              ** Specify if the app should have a desired output
              ** leave empty for automatic output 
              */
             "desiredOutput": "",
+
             // Set transition settings
             "transitions": {
                 // Use custom, modern transitions
                 "enabled": true,
+
                 /*
                  ** Define a list of predefined transitions to use
                  ** leave empty for automatic transition selection
                  */
                 "selectedTransitions": []
             },
+
             /*
              **  Define a general theme that the app should use for the video
              **  Leave empty for automatic creation
              */
             "generalTheme": "Motivational Clips",
+
             // VIDEO SETTINGS
             // Not advised to change these settings, unless needed
             "upscale": true, // Use the unsharp filter
             "colorful": true, // Make the colors better
             "contrast": 1.3
         },
+
         /*
          ** Allow images to appear above videos
          ** This can be used to add a logo or watermark
@@ -69,28 +95,11 @@
         "overlays": {
             // Enable overlays
             "enabled": true,
+
             // Apply a watermark to the video
             "watermark": {
                 "enabled": true,
                 "text": "channel.name"
-            },
-            // Apply images
-            "imageApplication": {
-                // Enable image overlays
-                "enabled": true,
-                /* 
-                 ** Insert images into the video, using this template
-                 ** ex:
-                */
-                "#": {
-                    "name": "story1.png", // mandatory, specify the file name
-                    "interval": "00:00 - auto", // interval in which the video can be placed.
-                    /*
-                     ** Text for AI to read
-                     ** set as `null` with no semicolons, just plain text for no tts 
-                     */
-                    "text": "Reddit, what was a time you had a lot of fun?"
-                }
             }
         }
     }
