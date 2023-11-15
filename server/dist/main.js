@@ -409,7 +409,7 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
          */
         const lengths = await getVideoLengths();
         await trimVideos(lengths);
-        // TODO: Continue the app
+        // TODO: Continue the app development
     })();
 }
 /**
