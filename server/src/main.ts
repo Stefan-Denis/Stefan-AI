@@ -361,6 +361,7 @@ const combinations: combination = JSON.parse(fs.readFileSync(combinationsFilePat
  * - `SSMLParser` 
  * - `TTS`
  * - `trimVideos`
+ * - `concat`
  */
 interface testInterface extends Object {
     enabled: boolean
@@ -661,6 +662,62 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
             }
         }
 
+        // TODO add transitions.
+        async function concat() {
+            if ((test.enabled && test.unitToTest === 'concat') || !test.enabled) {
+
+                const trimDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'trim')
+                const concatDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'concat')
+                const files = fs.readdirSync(trimDir).filter(file => path.extname(file) === '.mp4') as Array<string>
+                fs.emptyDirSync(concatDir)
+
+                spinner = ora('Concatenating videos').start()
+
+                const fileListPath = path.join(trimDir, 'files.txt')
+                const fileContents = files.map(file => `file '${path.relative(trimDir, path.join(trimDir, file)).replace(/\\/g, '/')}'`).join('\n')
+                fs.writeFileSync(fileListPath, fileContents)
+
+                // Concatenate the videos
+                const outputPath = path.join(concatDir, 'concat.mp4')
+
+                const ffmpeg = spawnSync(
+                    'ffmpeg',
+                    [
+                        /**
+                         * Specify the input format as 'concat'
+                         */
+                        '-f', 'concat',
+
+                        /**
+                         * Allow unsafe file paths
+                         */
+                        '-safe', '0',
+
+                        /**
+                         * Specify the input files
+                         */
+                        '-i', fileListPath,
+
+                        /**
+                         * Copy the input streams directly to the output
+                         */
+                        '-c', 'copy',
+
+                        /**
+                         * Specify the output file
+                         */
+                        outputPath
+                    ]
+                )
+
+                if (ffmpeg.error) {
+                    spinner.fail(`Failed to concatenate videos: ${ffmpeg.error}`)
+                } else {
+                    spinner.succeed('Concatenated videos')
+                }
+            }
+        }
+
         await subtitles()
         await SSMLParser()
         await TTS()
@@ -674,7 +731,7 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
         const lengths: Array<number> = await getVideoLengths()
         await trimVideos(lengths)
 
-        // TODO: Continue the app development
+        await concat()
     })()
 }
 
