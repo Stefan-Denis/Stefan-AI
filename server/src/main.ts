@@ -6,6 +6,7 @@ import { ChatCompletion } from 'openai/resources'
 import * as commentJson from 'comment-json'
 import { spawnSync } from 'child_process'
 import ffmpeg from 'fluent-ffmpeg'
+import concat from 'ffmpeg-concat'
 import ora, { Ora } from 'ora'
 import OpenAI from 'openai'
 import dotenv from 'dotenv'
@@ -29,6 +30,7 @@ dotenv.config({ path: path.join(__dirname, '../', 'config', '.env') })
 // Set FFmpeg path
 const ffmpegPath = path.join(__dirname, '../', 'modules', 'ffmpeg.exe')
 ffmpeg.setFfmpegPath(ffmpegPath)
+process.env.PATH = path.dirname(ffmpegPath) + path.delimiter + process.env.PATH
 
 /**
  * Represents the settings for a video automation profile.
@@ -125,13 +127,9 @@ interface VideoAutomationSettings extends Object {
             transitions: {
                 /**
                  * Whether transitions are enabled.
+                 * Automatically selected by the app
                  */
                 enabled: boolean
-
-                /**
-                 * The list of transitions to use. Leave empty for auto transitions.
-                 */
-                selectedTransitions: string[]
             }
 
             /**
@@ -503,6 +501,19 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                         }
                     }
                 }
+
+                // Check if the script has only 1 key but the app.settings.easy.videosPerCombination is over 1
+                if (Object.keys(videoScript).length === 1 && app.settings.easy.videosPerCombination > 1) {
+                    spinner.fail('Script has only 1 key but the app.settings.easy.videosPerCombination is over 1.')
+
+                    /**
+                     * Restart
+                     */
+                    await wait(1000)
+                    console.clear()
+                    await subtitles()
+                    return
+                }
             }
         }
 
@@ -554,14 +565,13 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
             }
         }
 
+        /**
+         * The voice to use for the TTS.
+         */
         const voice: string = Math.random() > 0.5 ? "en-US-Neural2-D" : "en-US-Neural2-J"
         async function TTS() {
             if ((test.enabled && test.unitToTest === 'TTS') || !test.enabled) {
                 fs.emptydirSync(path.join(__dirname, '../', 'temporary', 'editing', 'audio'))
-
-                /**
-                 * The voice to use for the TTS.
-                 */
 
                 // Concatenate the files depending on the settings
                 spinner = ora('Creating TTS file').start()
@@ -624,7 +634,6 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
 
         async function trimVideos(durations: Array<number>) {
             if ((test.enabled && test.unitToTest === 'trimVideos') || !test.enabled) {
-
                 try {
                     const trimDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'trim')
                     fs.emptyDirSync(trimDir)
@@ -632,15 +641,41 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                     for (let index = 0; index < durations.length; index++) {
                         spinner = ora('Trimming video ' + (index + 1)).start()
 
-                        const duration = durations[index]
                         const currentClip = currentCombination[index] as string
                         const videoPath = path.join(__dirname, '../', 'videos', currentClip)
 
                         const video = ffmpeg(videoPath)
+                        video.noAudio()
 
-                        video.setStartTime(0)
-                        video.setDuration(duration)
-                        video.output(path.join(trimDir, `${index + 1}.mp4`))
+                        if (index === 0 && app.settings.easy.loop) {
+                            // Create the first clip 1 second shorter from the start
+                            video.setStartTime(1)
+                            video.setDuration(durations[index] - 1)
+                            video.output(path.join(trimDir, `${index + 1}.mp4`))
+
+                            // Create a new clip named loop.mp4 that is the first second of the first video
+                            const loopVideo = ffmpeg(videoPath)
+                            loopVideo.setStartTime(0)
+                            loopVideo.setDuration(1)
+                            loopVideo.output(path.join(trimDir, 'loop.mp4'))
+                            await new Promise((resolve, reject) => {
+                                loopVideo.on('error', (error) => {
+                                    console.log(error)
+                                    reject(error)
+                                })
+
+                                loopVideo.on('end', () => {
+                                    spinner.succeed('Created loop.mp4')
+                                    resolve(true)
+                                })
+
+                                loopVideo.run()
+                            })
+                        } else {
+                            video.setStartTime(0)
+                            video.setDuration(durations[index])
+                            video.output(path.join(trimDir, `${index + 1}.mp4`))
+                        }
 
                         await new Promise((resolve, reject) => {
                             video.on('error', (error) => {
@@ -662,59 +697,132 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
             }
         }
 
-        // TODO add transitions.
-        async function concat() {
+        async function concatVideos() {
             if ((test.enabled && test.unitToTest === 'concat') || !test.enabled) {
-
                 const trimDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'trim')
                 const concatDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'concat')
-                const files = fs.readdirSync(trimDir).filter(file => path.extname(file) === '.mp4') as Array<string>
+                let files = fs.readdirSync(trimDir).filter(file => path.extname(file) === '.mp4' && path.basename(file, '.mp4') !== 'loop') as Array<string>
                 fs.emptyDirSync(concatDir)
 
-                spinner = ora('Concatenating videos').start()
+                spinner = ora('Concatenating videos ').start()
 
-                const fileListPath = path.join(trimDir, 'files.txt')
-                const fileContents = files.map(file => `file '${path.relative(trimDir, path.join(trimDir, file)).replace(/\\/g, '/')}'`).join('\n')
-                fs.writeFileSync(fileListPath, fileContents)
-
-                // Concatenate the videos
-                const outputPath = path.join(concatDir, 'concat.mp4')
-
-                const ffmpeg = spawnSync(
-                    'ffmpeg',
-                    [
-                        /**
-                         * Specify the input format as 'concat'
-                         */
-                        '-f', 'concat',
-
-                        /**
-                         * Allow unsafe file paths
-                         */
-                        '-safe', '0',
-
-                        /**
-                         * Specify the input files
-                         */
-                        '-i', fileListPath,
-
-                        /**
-                         * Copy the input streams directly to the output
-                         */
-                        '-c', 'copy',
-
-                        /**
-                         * Specify the output file
-                         */
-                        outputPath
-                    ]
-                )
-
-                if (ffmpeg.error) {
-                    spinner.fail(`Failed to concatenate videos: ${ffmpeg.error}`)
-                } else {
-                    spinner.succeed('Concatenated videos')
+                // If the loop setting is enabled, add the loop video to the end of the files array
+                if (app.settings.easy.loop) {
+                    files.push('loop.mp4')
                 }
+
+                // Concatenate the videos 
+                const outputPath = path.join(concatDir, 'output.mp4')
+                try {
+                    await concat({
+                        output: outputPath,
+                        videos: files.map(file => path.join(trimDir, file)),
+                        transition: app.settings.advanced.transitions.enabled ? {
+                            name: Math.random() ? 'fade' : 'crosszoom',
+                            duration: 400
+                        } : undefined
+                    })
+                    spinner.succeed('Concatenated videos')
+                } catch (error) {
+                    spinner.fail(`Failed to concatenate videos: ${error}`)
+                }
+            }
+        }
+
+        /**
+         * Function to add subtitles to the video
+         * @param videoLength 
+         */
+        async function addSubtitles() {
+            /**
+             * Rules for the subtitles:
+             *  - If there is a comma, there is a 0.4s break
+             *  - A new line is a 0.5s break
+             *  - If a video extends to the next one, the break is 0.17s 
+             *  - Last line has no break
+             */
+            if ((test.enabled && test.unitToTest === 'addSubtitles') || !test.enabled) {
+                spinner = ora('Adding subtitles\n').start()
+
+                // Prepare file
+                const defaultData = fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'default.assa'), 'utf-8')
+                fs.writeFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.assa'), defaultData + '\n')
+
+                // Add subtitles
+                const script: StefanAIVideoScript = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'))
+                const tokens: Array<string> = []
+
+                for (const key in script) {
+                    const message = (script[key] as Video).message as string
+
+                    // Split the message into tokens
+                    const splitMessage = message.split(' ')
+
+                    splitMessage.forEach((token, index) => {
+                        // Add the token to the tokens array
+                        if (token != '?' && token != '!' && token != '.' && token != ',' && token != '' && token != ' ') {
+                            tokens.push(token)
+                        }
+
+                        // If the token ends with a comma, add a 0.4s break
+                        if (token.endsWith(',')) {
+                            tokens.push('0.4s break')
+                        }
+
+                        // If the token is the last token in the message, check if it's the last message in the script
+                        if (index === splitMessage.length - 1) {
+                            const scriptKeys = Object.keys(script)
+                            if (key != scriptKeys[scriptKeys.length - 1]) {
+                                tokens.push('0.17s break')
+                            }
+                        }
+                    })
+
+                }
+
+                function formatTime(timeInSeconds: number): string {
+                    const hours = Math.floor(timeInSeconds / 3600)
+                    const minutes = Math.floor((timeInSeconds % 3600) / 60)
+                    const seconds = Math.floor(timeInSeconds % 60)
+                    const centiseconds = Math.floor((timeInSeconds % 1) * 100)
+
+                    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`
+                }
+
+                let previousTime = 0
+                let subtitles = ''
+                for (const token of tokens) {
+                    if (token === '0.17s break' || token === '0.4s break') {
+                        // Handle breaks
+                        const breakDuration = parseFloat(token.split('s break')[0])
+                        const subtitle = `Dialogue: 0,${formatTime(previousTime)},${formatTime(previousTime + breakDuration)},Default,,0,0,0,,`
+                        previousTime += breakDuration
+
+                        // Add the subtitle to the subtitles string
+                        subtitles += subtitle + '\n'
+                    } else {
+                        // Construct the subtitle
+                        // Create a TTS file and get its length
+                        const tempAudioPath = path.join(__dirname, '../', 'temporary', 'editing', 'audio', 'voiceMeasurment.mp3')
+
+                        await createTTS(token, 'voiceMeasurment', voice)
+
+                        const ffprobe = spawnSync(path.join(__dirname, '../', 'modules', 'ffprobe.exe'), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', tempAudioPath])
+                        const audioLength = Number(ffprobe.stdout.toString())
+
+                        // Handle normal tokens
+                        const subtitle = `Dialogue: 0,${formatTime(previousTime)},${formatTime(previousTime + audioLength)},Default,,0,0,0,,${token}`
+                        previousTime += audioLength
+
+                        // Add the subtitle to the subtitles string
+                        subtitles += subtitle + '\n'
+                    }
+                }
+
+                // Write the subtitles to the file
+                fs.appendFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.assa'), subtitles)
+
+                spinner.succeed('Added subtitles')
             }
         }
 
@@ -730,9 +838,24 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
          */
         const lengths: Array<number> = await getVideoLengths()
         await trimVideos(lengths)
+        await concatVideos()
 
-        await concat()
+        await addSubtitles()
     })()
+}
+
+/**
+ * 
+ * @param time Format the time to the SRT format
+ * @returns 
+ */
+function formatTime(time: number) {
+    const hours = Math.floor(time / 3600)
+    time %= 3600
+    const minutes = Math.floor(time / 60)
+    const seconds = time % 60
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toFixed(3).padStart(6, '0')}`
 }
 
 /**

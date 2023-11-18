@@ -94,7 +94,7 @@ function crashHandler(state: string) {
 
 Generates the combinations for the videos.
 
-returns its own propietary type 
+returns its own propietary type
 
 ```ts
 type videoDataMatrix = Array<Array<string | number>>
@@ -372,3 +372,252 @@ async function subtitles() {
     }
 }
 ```
+
+
+# SSMLParser()
+
+Parses the SSML and returns the parsed SSML to a file.
+
+```ts
+        async function SSMLParser() {
+            if ((test.enabled && test.unitToTest === 'SSMLParser') || !test.enabled) {
+                spinner = ora('Parsing SSML').start()
+                await wait(1200)
+
+                let matrix: Array<Array<string | boolean>> = []
+
+                const ssmlFilePath = path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.ssml')
+                const videoScriptJSON: StefanAIVideoScript = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'))
+
+                for (const key in videoScriptJSON) {
+                    const video = videoScriptJSON[key]
+                    if (typeof video !== 'string' && video?.isUsed) {
+                        matrix.push([video.message as string])
+                    }
+
+                    if (typeof video !== 'string' && video?.extends) {
+                        matrix[matrix.length - 1].push(true)
+                    }
+                }
+
+                let SSML = '<speak>\n'
+
+                try {
+                    for (let x = 0; x < matrix.length; x++) {
+                        let subtitle = (matrix[x][0] as string).replace(/,/g, ',<break time="0.4s"/>')
+                        subtitle = subtitle.replace(/\bif\b/gi, '<emphasis level="strong">if</emphasis>')
+                        SSML += `<p><s>${subtitle}</s></p>\n`
+                        if (matrix[x][1]) {
+                            SSML += '<break time="0.17s"/>\n'
+                        } else if (x === matrix.length - 1) {
+
+                        } else {
+                            SSML += '<break time="0.5s"/>\n'
+                        }
+                    }
+                } finally {
+                    SSML += '</speak>'
+                }
+
+                fs.writeFileSync(ssmlFilePath, SSML)
+                spinner.succeed('Parsed SSML.')
+            }
+        }
+```
+
+
+# TTS()
+
+Creates .mp4 file with the TTS output
+
+```ts
+        /**
+         * The voice to use for the TTS.
+         */
+        const voice: string = Math.random() > 0.5 ? "en-US-Neural2-D" : "en-US-Neural2-J"
+        async function TTS() {
+            if ((test.enabled && test.unitToTest === 'TTS') || !test.enabled) {
+                fs.emptydirSync(path.join(__dirname, '../', 'temporary', 'editing', 'audio'))
+
+                // Concatenate the files depending on the settings
+                spinner = ora('Creating TTS file').start()
+
+                const SSMLContents = fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.ssml'), 'utf-8')
+                await createTTS(SSMLContents, 'audio', voice, true)
+
+                spinner.succeed('Created TTS file')
+            }
+        }
+```
+
+
+# getVideoLengths()
+
+Returns the lengths of all the subtitles and determines how long each video should be
+
+```ts
+        async function getVideoLengths(): Promise<Array<number>> {
+            const subtitlesLength: Array<number> = []
+
+            if ((test.enabled && test.unitToTest === 'trimVideos') || !test.enabled) {
+                spinner = ora('Retrieving Video Lengths').start()
+
+
+                // Get the length of each subtitle
+                async function testLength(videonr: number) {
+                    let SSML: string = '<speak>\n'
+
+                    // Parse to SSMl
+                    try {
+                        let subtitle = ((videoScriptJSON[`video${videonr}`] as Video)!.message as string).replace(/,/g, ',<break time="0.4s"/>')
+                        subtitle = subtitle.replace(/\bif\b/gi, '<emphasis level="strong">if</emphasis>')
+
+                        SSML += `<p><s>${subtitle}</s></p>\n`
+
+                        if ((videoScriptJSON[`video${videonr}`] as Video)!.extends) {
+                            SSML += '<break time="0.17s"/>\n'
+                        } else {
+                            SSML += '<break time="0.5s"/>\n'
+                        }
+                    } finally {
+                        SSML += '</speak>'
+                    }
+
+                    await createTTS(SSML, 'temp', voice, true)
+
+                    // Get the length of the audio file
+                    const tempAudioFilePath = path.join(__dirname, '../', 'temporary', 'editing', 'audio', `temp.mp3`)
+                    const ffprobe = spawnSync(path.join(__dirname, '../', 'modules', 'ffprobe.exe'), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', tempAudioFilePath])
+                    subtitlesLength.push(parseFloat(Number(ffprobe.stdout.toString()).toFixed(3)))
+                }
+
+                const videoScriptJSON: StefanAIVideoScript = await JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'))
+
+                const keys = Object.keys(videoScriptJSON)
+                for (const key of keys) {
+                    const videoNumber = parseInt(key.replace('video', ''))
+                    await testLength(videoNumber)
+                }
+
+                spinner.succeed('Got video durations')
+            }
+
+            return subtitlesLength as Array<number>
+        }
+```
+
+
+# trimVideos()
+
+This functions trims the videos to the correct length:
+
+```ts
+        async function trimVideos(durations: Array<number>) {
+            if ((test.enabled && test.unitToTest === 'trimVideos') || !test.enabled) {
+                try {
+                    const trimDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'trim')
+                    fs.emptyDirSync(trimDir)
+
+                    for (let index = 0; index < durations.length; index++) {
+                        spinner = ora('Trimming video ' + (index + 1)).start()
+
+                        const currentClip = currentCombination[index] as string
+                        const videoPath = path.join(__dirname, '../', 'videos', currentClip)
+
+                        const video = ffmpeg(videoPath)
+                        video.noAudio()
+
+                        if (index === 0 && app.settings.easy.loop) {
+                            // Create the first clip 1 second shorter from the start
+                            video.setStartTime(1)
+                            video.setDuration(durations[index] - 1)
+                            video.output(path.join(trimDir, `${index + 1}.mp4`))
+
+                            // Create a new clip named loop.mp4 that is the first second of the first video
+                            const loopVideo = ffmpeg(videoPath)
+                            loopVideo.setStartTime(0)
+                            loopVideo.setDuration(1)
+                            loopVideo.output(path.join(trimDir, 'loop.mp4'))
+                            await new Promise((resolve, reject) => {
+                                loopVideo.on('error', (error) => {
+                                    console.log(error)
+                                    reject(error)
+                                })
+
+                                loopVideo.on('end', () => {
+                                    spinner.succeed('Created loop.mp4')
+                                    resolve(true)
+                                })
+
+                                loopVideo.run()
+                            })
+                        } else {
+                            video.setStartTime(0)
+                            video.setDuration(durations[index])
+                            video.output(path.join(trimDir, `${index + 1}.mp4`))
+                        }
+
+                        await new Promise((resolve, reject) => {
+                            video.on('error', (error) => {
+                                console.log(error)
+                                reject(error)
+                            })
+
+                            video.on('end', () => {
+                                spinner.succeed('Trimmed video ' + (index + 1))
+                                resolve(true)
+                            })
+
+                            video.run()
+                        })
+                    }
+                } catch {
+                    spinner.fail('Failed to trim videos')
+                }
+            }
+        }
+```
+
+
+# concatVideos()
+
+Concats all the videos together
+
+```ts
+        async function concatVideos() {
+            if ((test.enabled && test.unitToTest === 'concat') || !test.enabled) {
+                const trimDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'trim')
+                const concatDir = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'concat')
+                let files = fs.readdirSync(trimDir).filter(file => path.extname(file) === '.mp4' && path.basename(file, '.mp4') !== 'loop') as Array<string>
+                fs.emptyDirSync(concatDir)
+
+                spinner = ora('Concatenating videos ').start()
+
+                // If the loop setting is enabled, add the loop video to the end of the files array
+                if (app.settings.easy.loop) {
+                    files.push('loop.mp4')
+                }
+
+                // Concatenate the videos 
+                const outputPath = path.join(concatDir, 'output.mp4')
+                try {
+                    await concat({
+                        output: outputPath,
+                        videos: files.map(file => path.join(trimDir, file)),
+                        transition: app.settings.advanced.transitions.enabled ? {
+                            name: Math.random() ? 'fade' : 'crosszoom',
+                            duration: 400
+                        } : undefined
+                    })
+                    spinner.succeed('Concatenated videos')
+                } catch (error) {
+                    spinner.fail(`Failed to concatenate videos: ${error}`)
+                }
+            }
+        }
+```
+
+
+# parseSubtitles()
+
+Parses the subtitles so that they sync up with the rate of the speaker

@@ -1,6 +1,6 @@
 {
     "enabled": true,
     "runOnce": true,
-    "unitToTest": "trimVideos",
+    "unitToTest": "addSubtitles",
     "skipGPT": false
 }

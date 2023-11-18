@@ -1,3 +1,14 @@
-{"video1": {"isUsed": true, "message": "Do not fear hardwork, because it'll highly pay off."},
- "video2": {"isUsed": true, "message": "Remember that a man that isn't working, is like a tree, it's fruit is always stolen."},
- "video3": {"isUsed": true, "message": "Hustle, or accept poverty by default, make your choice!"}}
+{
+    "video1": {
+        "isUsed": true,
+        "message": "Open to new opportunities, instead of staying confined in your comfort zone. "
+    },
+    "video2": {
+        "isUsed": true,
+        "message": "Technology and the money created it, never stop at the risk everything stage."
+    },
+    "video3": {
+        "isUsed": true,
+        "message": "Break the patterns and build the life you want, Go Hundustani!"
+    }
+}
