@@ -1,6 +1,7 @@
 {
-    "enabled": true,
+    "enabled": false,
     "runOnce": true,
     "unitToTest": "parseTimings",
-    "skipGPT": false
+    "skipGPT": false,
+    "updateCombinations": false
 }

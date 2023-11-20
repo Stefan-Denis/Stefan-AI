@@ -368,12 +368,15 @@ const combinations: combination = JSON.parse(fs.readFileSync(combinationsFilePat
  * - `TTS`
  * - `trimVideos`
  * - `concat`
+ * - `parseTimings`
+ * - `addSubtitles`
  */
 interface testInterface extends Object {
     enabled: boolean
     unitToTest: string
     skipGPT: true
     runOnce: boolean
+    updateCombinations: boolean
 }
 
 const test: testInterface = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'config', 'test.json'), 'utf-8'))
@@ -383,6 +386,13 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
     console.log(`\n\n${chalk.whiteBright('Combination:')} ${x + 1}`)
 
     const currentCombination = combinations[x]
+
+    if (currentCombination[currentCombination.length - 1] === true) {
+        continue
+    }
+
+    let videoLengthExceedsMax = false
+
     await (async () => {
 
         async function subtitles() {
@@ -658,7 +668,7 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                         if (index === 0 && app.settings.easy.loop) {
                             // Create the first clip 1 second shorter from the start
                             video.setStartTime(1)
-                            video.setDuration(durations[index] - 1)
+                            video.setDuration(durations[index])
                             video.output(path.join(trimDir, `${index + 1}.mp4`))
 
                             // Create a new clip named loop.mp4 that is the first second of the first video
@@ -727,7 +737,7 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                         videos: files.map(file => path.join(trimDir, file)),
                         transition: app.settings.advanced.transitions.enabled ? {
                             name: Math.random() ? 'fade' : 'crosszoom',
-                            duration: 400
+                            duration: 300
                         } : undefined
                     })
                     spinner.succeed('Concatenated videos')
@@ -752,13 +762,27 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                 spinner = ora('Adding subtitles\n').start()
 
                 // MFA paths
-                const CORPUS_DIRECTORY = path.join(__dirname, '../', 'temporary', 'propietary', 'corpus')
+                const uniqueId = Date.now()
+                const CORPUS_DIRECTORY = path.join(__dirname, '../', 'temporary', 'propietary', uniqueId.toString())
                 const dictionaryPath = path.join(__dirname, '../', 'modules', 'english_us_arpa.dict')
                 const acousticModelPath = path.join(__dirname, '../', 'modules', 'english_us_arpa')
                 const outputDir = path.join(__dirname, '../', 'temporary', 'propietary', 'output')
 
-                fs.emptyDirSync(CORPUS_DIRECTORY)
-                fs.emptyDirSync(outputDir)
+                // Delete the corpus directory if it exists
+                if (fs.existsSync(CORPUS_DIRECTORY)) {
+                    fs.rmdirSync(CORPUS_DIRECTORY, { recursive: true })
+                }
+
+                // Create the corpus directory
+                fs.mkdirSync(CORPUS_DIRECTORY, { recursive: true })
+
+                // Delete the output directory if it exists
+                if (fs.existsSync(outputDir)) {
+                    fs.rmdirSync(outputDir, { recursive: true })
+                }
+
+                // Create the output directory
+                fs.mkdirSync(outputDir, { recursive: true })
 
                 // Convert MP3 to WAV
                 const audioPath = path.join(__dirname, '../', 'temporary', 'editing', 'audio', 'audio.mp3')
@@ -785,22 +809,77 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                 const process = spawnSync('mfa', ['align', '--num_jobs', `${app.settings.advanced.cpuCores}`, CORPUS_DIRECTORY, dictionaryPath, acousticModelPath, outputDir])
                 console.log(process.stderr ? 'An error has occoured at MFA processing' : '')
 
-                // Construct the subtitle file
-
                 spinner.succeed('Added subtitles')
+
+                // Delete the corpus directory
+                fs.rmdirSync(CORPUS_DIRECTORY, { recursive: true })
 
                 return parseTextGrid(path.join(outputDir, 'audio.TextGrid')) as Promise<Array<object>>
             }
         }
 
-        async function createSubtitleFile(timings: Array<object>) {
+        interface Timing {
+            xmin: number
+            xmax: number
+            text: string
+        }
+
+        async function parseSubtitles(timings: Array<Timing>) {
             if ((test.enabled && test.unitToTest === 'parseTimings') || !test.enabled) {
                 spinner = ora('Creating subtitle file').start()
 
-                // TODO
-                console.log(timings)
+                // prepare subtitle file
+                const defaultFile = path.join(__dirname, '../', 'temporary', 'propietary', 'default.ass')
+                const subtitleFile = path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.ass')
+
+                const defaultSubtitleData = fs.readFileSync(defaultFile, 'utf-8')
+                fs.writeFileSync(subtitleFile, defaultSubtitleData)
+
+                timings.forEach((timing: Timing) => {
+                    const minTime = formatTime(timing.xmin)
+                    const maxTime = formatTime(timing.xmax)
+                    const text = timing.text
+
+                    const subtitle = createSubtitle(minTime, maxTime, text)
+
+                    fs.appendFileSync(subtitleFile, '\n' + subtitle)
+                })
 
                 spinner.succeed('Created subtitle file')
+            }
+        }
+
+        async function addSubtitles() {
+            if ((test.enabled && test.unitToTest === 'addSubtitles') || !test.enabled) {
+                spinner = ora('Adding subtitles to video').start()
+
+                const subtitlesFile = path.join('../', 'temporary', 'propietary', 'subtitles.ass').replace(/\\/g, '/')
+                const videoFile = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'concat', 'output.mp4').replace(/\\/g, '/')
+                const outputFile = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'subtitle', 'output.mp4').replace(/\\/g, '/')
+
+                // Check if the subtitle file exists
+                if (!fs.existsSync(subtitlesFile)) {
+                    console.error(`Subtitle file does not exist: ${subtitlesFile}`)
+                    return
+                }
+
+                // Check if the video file exists
+                if (!fs.existsSync(videoFile)) {
+                    console.error(`Video file does not exist: ${videoFile}`)
+                    return
+                }
+
+                // Check if the output directory exists and create it if not
+                const outputDir = path.dirname(outputFile)
+                if (!fs.existsSync(outputDir)) {
+                    fs.mkdirSync(outputDir, { recursive: true })
+                }
+
+                fs.emptyDirSync(outputDir)
+
+                const ffmpeg = spawnSync(ffmpegPath, ['-i', videoFile, '-vf', `ass=${subtitlesFile}`, outputFile])
+
+                spinner.succeed('Added subtitles to video')
             }
         }
 
@@ -815,15 +894,72 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
          * Returns the lengths of each video in an array
          */
         const lengths: Array<number> = await getVideoLengths()
-        await trimVideos(lengths)
-        await concatVideos()
 
-        /**
-         * Contains the timings for each word
-         */
-        const timings = await parseTimings() as Array<object>
-        await createSubtitleFile(timings)
+        // Check if lengths are more than max in settings length
+        const sum = lengths.reduce((a, b) => a + b, 0)
+
+        if (sum > app.settings.easy.length.max) {
+            videoLengthExceedsMax = true
+        }
+
+        if (!videoLengthExceedsMax) {
+            await trimVideos(lengths)
+            await concatVideos()
+
+            /**
+             * Parse the subtitles into timings -> Create subtitle file
+             */
+            /**
+             * Contains the timings for each word
+             */
+            const timings = await parseTimings() as Array<object>
+            console.log(timings)
+            await parseSubtitles(timings as Timing[])
+
+            /**
+             * Add the subtitles to the video + audio
+             */
+
+            await addSubtitles()
+        }
     })()
+
+    if (test.updateCombinations) {
+        if (!videoLengthExceedsMax) {
+            currentCombination[currentCombination.length - 1] = true
+
+            // Update the main combination
+            combinations[x] = currentCombination
+
+            // Write the combinations to file
+            fs.writeFileSync(combinationsFilePath, JSON.stringify(combinations, null, 4))
+        } else {
+            x--
+            continue
+        }
+    }
+}
+
+/**
+ * Format seconds into .ass time
+ * @param time
+ */
+function formatTime(seconds: number) {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+
+    return `${hours.toString().padStart(1, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toFixed(2).padStart(5, '0')}`
+}
+
+/**
+ * Create Advanced SubStation Alpha format subtitles
+ * @param startTime
+ * @param endTime
+ * @param text
+ */
+function createSubtitle(startTime: string, endTime: string, text: string) {
+    return `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${text}`
 }
 
 /**

@@ -1,14 +1,1 @@
-{
-    "video1": {
-        "isUsed": true,
-        "message": "Open to new opportunities, instead of staying confined in your comfort zone. "
-    },
-    "video2": {
-        "isUsed": true,
-        "message": "Technology and the money created it, never stop at the risk everything stage."
-    },
-    "video3": {
-        "isUsed": true,
-        "message": "Break the patterns and build the life you want, Go Hundustani!"
-    }
-}
+{"video1": {"isUsed": true, "message": "Open your eyes."}, "video2": {"isUsed": true, "message": "This could be your new Home."}, "video3": {"isUsed": true, "message": "If you want it bad enough."}}
