@@ -6,6 +6,7 @@ import * as commentJson from 'comment-json';
 import { spawnSync } from 'child_process';
 import ffmpeg from 'fluent-ffmpeg';
 import concat from 'ffmpeg-concat';
+import readline from 'readline';
 import ora from 'ora';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
@@ -26,6 +27,7 @@ dotenv.config({ path: path.join(__dirname, '../', 'config', '.env') });
 const ffmpegPath = path.join(__dirname, '../', 'modules', 'ffmpeg.exe');
 ffmpeg.setFfmpegPath(ffmpegPath);
 process.env.PATH = path.dirname(ffmpegPath) + path.delimiter + process.env.PATH;
+process.env.GENTLE_RESOURCES_ROOT = path.join(__dirname, '../', 'text-aligner', 'exp');
 /**
  * Wait function
  * @param ms The amount of milliseconds to wait.
@@ -466,9 +468,8 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
         }
         /**
          * Function to add subtitles to the video
-         * @param videoLength
          */
-        async function addSubtitles() {
+        async function parseTimings() {
             /**
              * Rules for the subtitles:
              *  - If there is a comma, there is a 0.4s break
@@ -476,71 +477,44 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
              *  - If a video extends to the next one, the break is 0.17s
              *  - Last line has no break
              */
-            if ((test.enabled && test.unitToTest === 'addSubtitles') || !test.enabled) {
+            if ((test.enabled && test.unitToTest === 'parseTimings') || !test.enabled) {
                 spinner = ora('Adding subtitles\n').start();
-                // Prepare file
-                const defaultData = fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'default.assa'), 'utf-8');
-                fs.writeFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.assa'), defaultData + '\n');
-                // Add subtitles
-                const script = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'));
-                const tokens = [];
-                for (const key in script) {
-                    const message = script[key].message;
-                    // Split the message into tokens
-                    const splitMessage = message.split(' ');
-                    splitMessage.forEach((token, index) => {
-                        // Add the token to the tokens array
-                        if (token != '?' && token != '!' && token != '.' && token != ',' && token != '' && token != ' ') {
-                            tokens.push(token);
-                        }
-                        // If the token ends with a comma, add a 0.4s break
-                        if (token.endsWith(',')) {
-                            tokens.push('0.4s break');
-                        }
-                        // If the token is the last token in the message, check if it's the last message in the script
-                        if (index === splitMessage.length - 1) {
-                            const scriptKeys = Object.keys(script);
-                            if (key != scriptKeys[scriptKeys.length - 1]) {
-                                tokens.push('0.17s break');
-                            }
-                        }
-                    });
+                // MFA paths
+                const CORPUS_DIRECTORY = path.join(__dirname, '../', 'temporary', 'propietary', 'corpus');
+                const dictionaryPath = path.join(__dirname, '../', 'modules', 'english_us_arpa.dict');
+                const acousticModelPath = path.join(__dirname, '../', 'modules', 'english_us_arpa');
+                const outputDir = path.join(__dirname, '../', 'temporary', 'propietary', 'output');
+                fs.emptyDirSync(CORPUS_DIRECTORY);
+                fs.emptyDirSync(outputDir);
+                // Convert MP3 to WAV
+                const audioPath = path.join(__dirname, '../', 'temporary', 'editing', 'audio', 'audio.mp3');
+                const wavAudioPath = path.join(CORPUS_DIRECTORY, 'audio.wav');
+                const ffmpeg = spawnSync('ffmpeg', ['-i', audioPath, wavAudioPath]);
+                if (ffmpeg.error) {
+                    console.log('An error occurred: ' + ffmpeg.error.message);
                 }
-                function formatTime(timeInSeconds) {
-                    const hours = Math.floor(timeInSeconds / 3600);
-                    const minutes = Math.floor((timeInSeconds % 3600) / 60);
-                    const seconds = Math.floor(timeInSeconds % 60);
-                    const centiseconds = Math.floor((timeInSeconds % 1) * 100);
-                    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+                // Prepare Transcript File
+                const videoScriptJSON = JSON.parse(fs.readFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'prompt.json'), 'utf-8'));
+                fs.existsSync(path.join(__dirname, '../', 'temporary', 'editing', 'audio', 'temp.mp3')) ? fs.unlinkSync(path.join(__dirname, '../', 'temporary', 'editing', 'audio', 'temp.mp3')) : null;
+                fs.writeFileSync(path.join(CORPUS_DIRECTORY, 'audio.lab'), '');
+                for (const key in videoScriptJSON) {
+                    const video = videoScriptJSON[key];
+                    fs.appendFileSync(path.join(CORPUS_DIRECTORY, 'audio.lab'), video.message + '\n');
                 }
-                let previousTime = 0;
-                let subtitles = '';
-                for (const token of tokens) {
-                    if (token === '0.17s break' || token === '0.4s break') {
-                        // Handle breaks
-                        const breakDuration = parseFloat(token.split('s break')[0]);
-                        const subtitle = `Dialogue: 0,${formatTime(previousTime)},${formatTime(previousTime + breakDuration)},Default,,0,0,0,,`;
-                        previousTime += breakDuration;
-                        // Add the subtitle to the subtitles string
-                        subtitles += subtitle + '\n';
-                    }
-                    else {
-                        // Construct the subtitle
-                        // Create a TTS file and get its length
-                        const tempAudioPath = path.join(__dirname, '../', 'temporary', 'editing', 'audio', 'voiceMeasurment.mp3');
-                        await createTTS(token, 'voiceMeasurment', voice);
-                        const ffprobe = spawnSync(path.join(__dirname, '../', 'modules', 'ffprobe.exe'), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', tempAudioPath]);
-                        const audioLength = Number(ffprobe.stdout.toString());
-                        // Handle normal tokens
-                        const subtitle = `Dialogue: 0,${formatTime(previousTime)},${formatTime(previousTime + audioLength)},Default,,0,0,0,,${token}`;
-                        previousTime += audioLength;
-                        // Add the subtitle to the subtitles string
-                        subtitles += subtitle + '\n';
-                    }
-                }
-                // Write the subtitles to the file
-                fs.appendFileSync(path.join(__dirname, '../', 'temporary', 'propietary', 'subtitles.assa'), subtitles);
+                // Start MFA
+                const process = spawnSync('mfa', ['align', '--num_jobs', `${app.settings.advanced.cpuCores}`, CORPUS_DIRECTORY, dictionaryPath, acousticModelPath, outputDir]);
+                console.log(process.stderr ? 'An error has occoured at MFA processing' : '');
+                // Construct the subtitle file
                 spinner.succeed('Added subtitles');
+                return parseTextGrid(path.join(outputDir, 'audio.TextGrid'));
+            }
+        }
+        async function createSubtitleFile(timings) {
+            if ((test.enabled && test.unitToTest === 'parseTimings') || !test.enabled) {
+                spinner = ora('Creating subtitle file').start();
+                // TODO
+                console.log(timings);
+                spinner.succeed('Created subtitle file');
             }
         }
         await subtitles();
@@ -555,20 +529,12 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
         const lengths = await getVideoLengths();
         await trimVideos(lengths);
         await concatVideos();
-        await addSubtitles();
+        /**
+         * Contains the timings for each word
+         */
+        const timings = await parseTimings();
+        await createSubtitleFile(timings);
     })();
-}
-/**
- *
- * @param time Format the time to the SRT format
- * @returns
- */
-function formatTime(time) {
-    const hours = Math.floor(time / 3600);
-    time %= 3600;
-    const minutes = Math.floor(time / 60);
-    const seconds = time % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toFixed(3).padStart(6, '0')}`;
 }
 /**
  * @param script
@@ -666,6 +632,51 @@ async function constructPrompt(type, currentCombination) {
             `;
     }
     return prompt;
+}
+/**
+ * @param textGridPath The path to the TextGrid file.
+ * @returns An array of items.
+ * Used in this specific case, to parse the TextGrid file generated by MFA
+ */
+async function parseTextGrid(filePath) {
+    const fileStream = fs.createReadStream(filePath);
+    const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+    });
+    let itemIndex = 0;
+    let intervals = [];
+    let currentInterval = {};
+    for await (const line of rl) {
+        if (line.includes('item [1]:')) {
+            itemIndex = 1;
+        }
+        else if (line.includes('item [2]:')) {
+            itemIndex = 2;
+        }
+        if (itemIndex === 1) {
+            // Parse the lines for item [1]
+            if (line.includes('intervals')) {
+                if (Object.keys(currentInterval).length > 0 && 'text' in currentInterval) {
+                    intervals.push(currentInterval);
+                }
+                currentInterval = {};
+            }
+            else {
+                const match = line.match(/(\w+) = (.+)/);
+                if (match) {
+                    const key = match[1];
+                    const value = match[2].replace(/"/g, '');
+                    currentInterval[key] = value;
+                }
+            }
+        }
+    }
+    // Push the last interval
+    if (Object.keys(currentInterval).length > 0 && 'text' in currentInterval) {
+        intervals.push(currentInterval);
+    }
+    return intervals;
 }
 // Stop the app
 crashHandler('no-crash');

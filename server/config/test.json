@@ -1,6 +1,6 @@
 {
     "enabled": true,
     "runOnce": true,
-    "unitToTest": "addSubtitles",
+    "unitToTest": "parseTimings",
     "skipGPT": false
 }
