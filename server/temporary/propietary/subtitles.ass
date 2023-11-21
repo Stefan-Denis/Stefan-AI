@@ -10,22 +10,28 @@ Style: Default,Arial,72,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 0,0:00:00.00,0:00:00.40,Default,,0,0,0,, 
-Dialogue: 0,0:00:00.40,0:00:00.72,Default,,0,0,0,,open 
-Dialogue: 0,0:00:00.72,0:00:00.88,Default,,0,0,0,,your 
-Dialogue: 0,0:00:00.88,0:00:01.48,Default,,0,0,0,,eyes 
-Dialogue: 0,0:00:01.48,0:00:02.39,Default,,0,0,0,, 
-Dialogue: 0,0:00:02.39,0:00:02.62,Default,,0,0,0,,this 
-Dialogue: 0,0:00:02.62,0:00:02.81,Default,,0,0,0,,could 
-Dialogue: 0,0:00:02.81,0:00:02.89,Default,,0,0,0,,be 
-Dialogue: 0,0:00:02.89,0:00:03.06,Default,,0,0,0,,your 
-Dialogue: 0,0:00:03.06,0:00:03.29,Default,,0,0,0,,new 
-Dialogue: 0,0:00:03.29,0:00:03.71,Default,,0,0,0,,home 
-Dialogue: 0,0:00:03.71,0:00:04.66,Default,,0,0,0,, 
-Dialogue: 0,0:00:04.66,0:00:04.84,Default,,0,0,0,,if 
-Dialogue: 0,0:00:04.84,0:00:04.94,Default,,0,0,0,,you 
-Dialogue: 0,0:00:04.94,0:00:05.15,Default,,0,0,0,,want 
-Dialogue: 0,0:00:05.15,0:00:05.30,Default,,0,0,0,,it 
-Dialogue: 0,0:00:05.30,0:00:05.55,Default,,0,0,0,,bad 
-Dialogue: 0,0:00:05.55,0:00:05.95,Default,,0,0,0,,enough 
-Dialogue: 0,0:00:05.95,0:00:06.32,Default,,0,0,0,, 
+Dialogue: 0,0:00:00.00,0:00:00.29,Default,,0,0,0,, 
+Dialogue: 0,0:00:00.29,0:00:00.40,Default,,0,0,0,,a 
+Dialogue: 0,0:00:00.40,0:00:00.78,Default,,0,0,0,,better 
+Dialogue: 0,0:00:00.78,0:00:01.14,Default,,0,0,0,,life 
+Dialogue: 0,0:00:01.14,0:00:01.84,Default,,0,0,0,,awaits 
+Dialogue: 0,0:00:01.84,0:00:02.34,Default,,0,0,0,, 
+Dialogue: 0,0:00:02.34,0:00:02.49,Default,,0,0,0,,but 
+Dialogue: 0,0:00:02.49,0:00:02.67,Default,,0,0,0,,you 
+Dialogue: 0,0:00:02.67,0:00:02.85,Default,,0,0,0,,have 
+Dialogue: 0,0:00:02.85,0:00:02.95,Default,,0,0,0,,to 
+Dialogue: 0,0:00:02.95,0:00:03.25,Default,,0,0,0,,take 
+Dialogue: 0,0:00:03.25,0:00:03.72,Default,,0,0,0,,risk 
+Dialogue: 0,0:00:03.72,0:00:03.83,Default,,0,0,0,,if 
+Dialogue: 0,0:00:03.83,0:00:03.94,Default,,0,0,0,,you 
+Dialogue: 0,0:00:03.94,0:00:04.23,Default,,0,0,0,,want 
+Dialogue: 0,0:00:04.23,0:00:04.37,Default,,0,0,0,,it 
+Dialogue: 0,0:00:04.37,0:00:05.22,Default,,0,0,0,, 
+Dialogue: 0,0:00:05.22,0:00:05.64,Default,,0,0,0,,become 
+Dialogue: 0,0:00:05.64,0:00:05.72,Default,,0,0,0,,the 
+Dialogue: 0,0:00:05.72,0:00:06.20,Default,,0,0,0,,person 
+Dialogue: 0,0:00:06.20,0:00:06.33,Default,,0,0,0,,who 
+Dialogue: 0,0:00:06.33,0:00:06.50,Default,,0,0,0,,can 
+Dialogue: 0,0:00:06.50,0:00:06.91,Default,,0,0,0,,handle 
+Dialogue: 0,0:00:06.91,0:00:07.03,Default,,0,0,0,,it 
+Dialogue: 0,0:00:07.03,0:00:07.39,Default,,0,0,0,, 

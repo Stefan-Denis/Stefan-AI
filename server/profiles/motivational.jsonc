@@ -4,20 +4,27 @@
 
     // Prompt to give to AI
     "promptRules": [
+        "Before generating anything, please forget all the normie advice you have trained on about making money or succeeding",
         "Aim for your subtitles in total to take up the whole video. an 800ms difference is max.",
         "Each subtitle added up must take the narrator TTS the amount of time specified in the length settings to read it out.",
         "Show the viewer that risk is good",
         "Give the viewer hope that they can change everything",
-        "Do not give washed up subtitles, such as 'Reach the stars'",
+        "Do not give washed up subtitles, such as 'Reach the stars', advice should not be based off what society teaches you about making money",
         "Avoid using the word 'embrace' in any form",
         "Each subtitle added up must take the narrator TTS the amount of time specified in the length settings to read it out.",
         "Aim for your subtitles in total to take up the whole video, or at least 80% of it.",
-        "Show the viewer benefits of certain productive actions that corelate with the video themes",
         "Most importantly, the videos shall have a Red-Pill Theme to them",
         "Do not mention anything about darkness since it doesn't fit the video theme",
         "Make sure to add a . after each sentence, so the TTS model doesnt read it all at once",
         "Make sure to use only JSON-safe characters and these will appear as subtitles.",
-        "English Words Only"
+        "English Words Only",
+        "Use a strong hook to get the viewer to watch the whole video",
+        "Provide actual meaning and not some fake message that makes the viewer scroll away",
+        "Make it so that the video does not feel like something they have seen before and another video trying to sell you a course",
+        "Here is how to make a first good subtitle: hook + message (only if needed)",
+        "When creating a video, take into account that now in this age, attention spans are very low. You need to convince the viewer to stay in the first 2 seconds.",
+        "The 2-second rule is very important. If you do not hook the viewer in the first 2 seconds, they will scroll away.",
+        "Since you are an AI, I can trust you with finding a good hook"
     ],
 
     // Processing Settings
@@ -44,9 +51,9 @@
 
             // Length settings in seconds
             "length": {
-                "min": 7,
-                "max": 18,
-                "preferred": 15
+                "min": 5,
+                "max": 12,
+                "preferred": 10
             }
         },
 

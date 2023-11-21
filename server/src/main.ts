@@ -736,7 +736,7 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                         output: outputPath,
                         videos: files.map(file => path.join(trimDir, file)),
                         transition: app.settings.advanced.transitions.enabled ? {
-                            name: Math.random() ? 'fade' : 'crosszoom',
+                            name: Math.random() >= 500 ? 'fade' : 'crosszoom',
                             duration: 300
                         } : undefined
                     })
@@ -806,8 +806,9 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
                 }
 
                 // Start MFA
-                const process = spawnSync('mfa', ['align', '--num_jobs', `${app.settings.advanced.cpuCores}`, CORPUS_DIRECTORY, dictionaryPath, acousticModelPath, outputDir])
-                console.log(process.stderr ? 'An error has occoured at MFA processing' : '')
+                const process = spawnSync('mfa', ['align', '--single_speaker', '--num_jobs', `${app.settings.advanced.cpuCores}`, CORPUS_DIRECTORY, dictionaryPath, acousticModelPath, outputDir])
+                console.log(process.stderr ? process.stderr.toString() : '')
+                console.log(process.stdout ? process.stdout.toString() : '')
 
                 spinner.succeed('Added subtitles')
 
@@ -883,6 +884,30 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
             }
         }
 
+        async function addAudios() {
+            if ((test.enabled && test.unitToTest === 'addAudios') || !test.enabled) {
+                spinner = ora('Adding TTS to video').start()
+
+                const ttsFile = path.join(__dirname, '../', 'temporary', 'editing', 'audio', 'audio.mp3')
+                const videoFile = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'subtitle', 'output.mp4')
+                const outputFileLocation = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'ttsAdded', 'output.mp4')
+
+                /**
+                 * Would of used a ternary operator but it wrote `undefined` in the console
+                 */
+                if (fs.existsSync(outputFileLocation)) {
+                    fs.unlinkSync(outputFileLocation)
+                }
+
+                /**
+                 * Add tts with ffmpeg on top of the audio
+                 * TODO add music on top as well
+                 */
+                const ffmpeg = spawnSync(ffmpegPath, ['-i', videoFile, '-i', ttsFile, '-c:v', 'copy', '-c:a', 'aac', '-map', '0:v:0', '-map', '1:a:0', '-shortest', '-y', outputFileLocation])
+                spinner.succeed('Added TTS to video')
+            }
+        }
+
         await subtitles()
         await SSMLParser()
         await TTS()
@@ -895,10 +920,16 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
          */
         const lengths: Array<number> = await getVideoLengths()
 
-        // Check if lengths are more than max in settings length
+        // Check if lengths are more than max in settings length + other error checks
         const sum = lengths.reduce((a, b) => a + b, 0)
 
-        if (sum > app.settings.easy.length.max) {
+        // Get length with ffmpeg
+        const audioFile = path.join(__dirname, '../', 'temporary', 'editing', 'audio', 'audio.mp3')
+        const ffprobe = spawnSync(path.join(__dirname, '../', 'modules', 'ffprobe.exe'), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', audioFile])
+
+        const audioLength = parseFloat(Number(ffprobe.stdout.toString()).toFixed(3))
+
+        if (sum > app.settings.easy.length.max || audioLength <= 1) {
             videoLengthExceedsMax = true
         }
 
@@ -913,19 +944,24 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
              * Contains the timings for each word
              */
             const timings = await parseTimings() as Array<object>
-            console.log(timings)
+            console.log(timings === undefined ? '' : timings)
             await parseSubtitles(timings as Timing[])
 
             /**
-             * Add the subtitles to the video + audio
+             * Add the subtitles to the video
              */
 
             await addSubtitles()
+
+            /**
+             * Add audio speech file to the video
+             */
+            await addAudios()
         }
     })()
 
-    if (test.updateCombinations) {
-        if (!videoLengthExceedsMax) {
+    if (!videoLengthExceedsMax) {
+        if (test.updateCombinations) {
             currentCombination[currentCombination.length - 1] = true
 
             // Update the main combination
@@ -933,10 +969,10 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
 
             // Write the combinations to file
             fs.writeFileSync(combinationsFilePath, JSON.stringify(combinations, null, 4))
-        } else {
-            x--
-            continue
         }
+    } else {
+        x--
+        continue
     }
 }
 
@@ -988,6 +1024,10 @@ async function createTTS(script: string, filename: string, voice: string, ssml?:
         }
     }
 
+    fs.existsSync(path.join(__dirname, '../', 'temporary', 'editing', 'audio', `${filename}.mp3`)) ?
+        fs.unlinkSync(path.join(__dirname, '../', 'temporary', 'editing', 'audio', `${filename}.mp3`)) :
+        null
+
     // Write mp3 data to file
     const [response] = await client.synthesizeSpeech(request)
     const writeFile = util.promisify(fs.writeFile)
@@ -1001,9 +1041,18 @@ async function createTTS(script: string, filename: string, voice: string, ssml?:
  * @returns The Prompt
  */
 async function constructPrompt(type: string, currentCombination?: subCombination): Promise<string> {
+
+    /**
+     * Formatted user prompt for either
+     * `user` or `system`
+     * @param `user prompt` requires the current combination of videos
+     */
     let prompt = ''
 
     if (type === 'system') {
+        /**
+         * Formatted prompt for the system
+         */
         prompt =
             `You are an AI assistant for Stefan-AI, an app that uses a powerful settings file and inputted videos to create short form content for TikTok and YouTube Shorts.
             Your task is to process the given video data and generate a JSON output that determines which videos should be used in the content creation process, and provide a message for each video.
@@ -1025,6 +1074,9 @@ async function constructPrompt(type: string, currentCombination?: subCombination
         const videoDirPath = path.join(__dirname, '../', 'videos')
         const amountOfVideos = fs.readdirSync(videoDirPath).filter(file => path.extname(file) === '.mp4').length
 
+        /**
+         * The video combination object
+         */
         const videoCombination: Record<string, { theme: string }> = {}
 
         for (let i = 1; i <= app.settings.easy.videosPerCombination; i++) {
@@ -1046,6 +1098,10 @@ async function constructPrompt(type: string, currentCombination?: subCombination
         for (const key in videoCombination) {
             arrayOfThemes.push(videoCombination[key].theme)
         }
+
+        /**
+         * Formatted user prompt for GPT
+         */
         prompt =
             `I will need you to make a video script for the following videos:
             ${arrayOfThemes.map((theme, index) => `${index + 1}. ${theme}`).join('\n')}

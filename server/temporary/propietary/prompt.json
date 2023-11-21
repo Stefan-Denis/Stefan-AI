@@ -1,1 +1,1 @@
-{"video1": {"isUsed": true, "message": "Open your eyes."}, "video2": {"isUsed": true, "message": "This could be your new Home."}, "video3": {"isUsed": true, "message": "If you want it bad enough."}}
+{"video1": {"extends": true, "isUsed": true, "message": "A better life awaits!"}, "video2": {"isUsed": true, "message": "But you have to take risk if you want it!"}, "video3": {"isUsed": true, "message": "Become the person who can handle it!"}}
