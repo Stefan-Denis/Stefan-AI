@@ -110,12 +110,22 @@ Having a stronger CPU will 100% help it.
 
 App does not rely that much on GPU/Likely not at all
 
-
 ### 💿 Storage
 
 It is reccomended to have at least 20gb of free space. Dependencies + app take up about 10gb - 15gb and each video can take up to 10mb. Average is around 5mb.
 
-
 Minimum: 20gb free
 
 Reccomended: 30gb free
+
+
+### Advanced Video Editor
+
+The App has also got the capabilities of upscaling and making content more colorful, at the tweak of a few easy settings:
+
+
+Upscale + Colored -> left
+
+Regular -> Right
+
+![Image](https://media.discordapp.net/attachments/1014085790915112960/1176975581057929379/image.png?ex=6570d2ed&is=655e5ded&hm=424a176235f93543b0a9b57fdcc93c0386e339046ba9d7a82ecb818828e1ef7e&=&format=webp&width=810&height=398)
