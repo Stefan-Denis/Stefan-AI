@@ -1,9 +1,7 @@
 <div id="header">
-    <div align="left">
-    <p style="font-size: 30px; transform: translate(50px, 75px); width: 200px">Stefan AI</p>
-    </div>
-    <div align="right">
-        <img src="github/logo-circle.png" width="100" style="transform: translateX(-60px)"/>
+    <h1 align=center>Stefan Ai</h1>
+    <div align="center">
+        <img src="github/logo-circle.png" width="100" align=center />
     </div>
 </div>
 
