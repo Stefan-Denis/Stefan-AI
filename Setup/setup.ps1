@@ -23,6 +23,6 @@ Write-Host " "
 
 
 # Start installers
-Start-Process -FilePath ".\python-download.exe" -Wait
+Start-Process -FilePath ".\python.exe" -Wait
 Start-Process -FilePath ".\VisualStudioSetup.exe" -Wait
 Start-Process -FilePath ".\miniconda.exe" -Wait
