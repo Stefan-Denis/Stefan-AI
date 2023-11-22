@@ -908,6 +908,58 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
             }
         }
 
+        async function postFX() {
+            /**
+             * Change certain video settings such as:
+             * `upscale` -> with the unsharp filter
+             * `colorful` -> make the video more colorful
+             * `contrast` -> set the contrast of the video
+             */
+            if ((test.enabled && test.unitToTest === 'postFX') || !test.enabled) {
+                let spinner = ora('Upscaling Video and applying visual settings').start()
+
+                const videoFile = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'ttsAdded', 'output.mp4')
+                const outputFileLocation = path.join(__dirname, '../', 'temporary', 'editing', 'video', 'postFX', 'output.mp4')
+
+                if (fs.existsSync(outputFileLocation)) {
+                    fs.unlinkSync(outputFileLocation)
+                }
+
+                let filters = []
+
+                if (app.settings.advanced.upscale) {
+                    filters.push('unsharp=5:5:1.0:5:5:0.0')
+                }
+
+
+                if (app.settings.advanced.colorful && app.settings.advanced.contrast) {
+                    let contrast = app.settings.advanced.contrast ? app.settings.advanced.contrast : 1.3
+                    filters.push(`eq=brightness=0.06:contrast=${contrast}:saturation=1.5`)
+                }
+
+                else if (app.settings.advanced.colorful && !app.settings.advanced.contrast) {
+                    filters.push('eq=brightness=0.06:contrast=1.0:saturation=1.5')
+                }
+
+                else if (!app.settings.advanced.colorful && app.settings.advanced.contrast) {
+                    let contrast = app.settings.advanced.contrast ? app.settings.advanced.contrast : 1.3
+                    filters.push(`eq=brightness=0.06:contrast=${contrast}:saturation=1.0`)
+                }
+
+                const args = ['-i', videoFile, '-vf', filters.join(','), outputFileLocation]
+                const result = spawnSync('ffmpeg', args)
+
+                if (result.error) {
+                    console.log(result.error)
+                    spinner.fail('postFX failed')
+                    throw result.error
+                } else {
+                    spinner.succeed('postFX done')
+                    return true
+                }
+            }
+        }
+
         await subtitles()
         await SSMLParser()
         await TTS()
@@ -957,6 +1009,11 @@ for (let x = 0; x < (test.runOnce ? 1 : combinations.length); x++) {
              * Add audio speech file to the video
              */
             await addAudios()
+
+            /**
+             * Final touches to make the video more appealing
+             */
+            await postFX()
         }
     })()
 
